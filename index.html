@@ -4,72 +4,94 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Find an open pharmacy near you at night — hours, phone, directions in one tap.">
+  <meta name="theme-color" content="#06231f">
   <title>RaatPharmacy — রাতে খোলা ফার্মেসি খুঁজুন | ঢাকা</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230a2e28'/%3E%3Cpath d='M17.5 13.5A6.5 6.5 0 0 1 10.5 6.5 6.5 6.5 0 1 0 17.5 13.5Z' fill='%2334e5a6'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">🌙</span>
-      <div>
-        <h1>RaatPharmacy</h1>
-        <p id="pitch">রাতে খোলা ফার্মেসি খুঁজুন — সময়, ফোন, দিকনির্দেশনা এক ট্যাপে।</p>
+    <div class="topbar-in">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 14.2A8.8 8.8 0 0 1 9.8 3.4 8.8 8.8 0 1 0 20.6 14.2Z"/><path d="M17.5 3.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="currentColor" stroke="none"/></svg>
+        </span>
+        <div class="brand-text">
+          <h1>RaatPharmacy</h1>
+          <p id="pitch">রাতে খোলা ফার্মেসি খুঁজুন — সময়, ফোন, দিকনির্দেশনা এক ট্যাপে।</p>
+        </div>
       </div>
-    </div>
-    <div class="top-right">
-      <div class="clock" id="clock" aria-live="off">—</div>
-      <button id="langToggle" class="lang-btn" type="button" aria-label="Switch language">English</button>
+      <div class="top-right">
+        <div class="clock" id="clock" aria-live="off">—</div>
+        <button id="langToggle" class="lang-btn" type="button" aria-label="Switch language">English</button>
+      </div>
     </div>
   </header>
 
   <main>
-    <!-- Live summary -->
-    <section class="summary" aria-label="Summary">
-      <div class="stat"><strong id="statTotal">–</strong><span id="statTotalLabel">ফার্মেসি</span></div>
-      <div class="stat stat-open"><strong id="statOpen">–</strong><span id="statOpenLabel">এখন খোলা</span></div>
-      <div class="stat"><strong id="statLate">–</strong><span id="statLateLabel">রাত ১২টার পরেও খোলা</span></div>
-    </section>
-
-    <p class="stock-note" id="stockNote">⚠️ স্টকের তথ্য লাইভ নয় — যাওয়ার আগে ফোন করে ওষুধ আছে কিনা জেনে নিন।</p>
-
-    <!-- Controls -->
-    <section class="controls" aria-label="Search and filters">
+    <!-- Tonight at a glance: search first, stats as filter chips -->
+    <section class="hero" aria-label="Find a pharmacy tonight">
+      <h2 class="hero-title"><span id="heroTitle">আজ রাতে খোলা ফার্মেসি</span></h2>
+      <p class="hero-sub"><span id="heroSub">ঢাকায় এখন কোন ফার্মেসি খোলা আছে — এক নজরে দেখে নিন, তারপর কল করুন।</span></p>
       <label class="search-wrap">
         <span class="visually-hidden" id="searchLabel">খুঁজুন</span>
+        <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
         <input id="searchInput" type="search" placeholder="ফার্মেসি, এলাকা বা ঠিকানা লিখুন…" aria-labelledby="searchLabel" autocomplete="off">
       </label>
-      <div class="filter-row">
-        <label class="select-wrap">
-          <span id="areaLabel">এলাকা</span>
-          <select id="areaFilter">
-            <option value="all">সব এলাকা</option>
-          </select>
-        </label>
-        <label class="toggle-wrap">
-          <input id="openNowToggle" type="checkbox">
-          <span id="openNowLabel">শুধু এখন খোলা</span>
-        </label>
-        <label class="toggle-wrap">
-          <input id="lateToggle" type="checkbox">
-          <span id="lateLabel">রাত ১২টার পরেও খোলা</span>
-        </label>
+      <div class="stat-chips" role="group" aria-label="Filter by status">
+        <button type="button" class="stat-chip" id="statChipAll" data-filter="all" aria-pressed="true">
+          <strong id="statTotal">–</strong><span id="statTotalLabel">ফার্মেসি</span>
+        </button>
+        <button type="button" class="stat-chip stat-chip-open" id="statChipOpen" data-filter="open" aria-pressed="false">
+          <span class="dot" aria-hidden="true"></span><strong id="statOpen">–</strong><span id="statOpenLabel">এখন খোলা</span>
+        </button>
+        <button type="button" class="stat-chip" id="statChipLate" data-filter="late" aria-pressed="false">
+          <strong id="statLate">–</strong><span id="statLateLabel">রাত ১২টার পরেও খোলা</span>
+        </button>
       </div>
+      <p class="stock-note" id="stockNote">স্টকের তথ্য লাইভ নয় — যাওয়ার আগে ফোন করে ওষুধ আছে কিনা জেনে নিন।</p>
     </section>
 
-    <!-- Results -->
-    <section class="results" aria-label="Pharmacies">
-      <p id="resultCount" class="result-count"></p>
-      <ul id="pharmacyList" class="pharmacy-list"></ul>
-      <p id="emptyState" class="empty hidden">কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।</p>
-      <p id="loadingState" class="empty">তালিকা লোড হচ্ছে…</p>
-    </section>
+    <div class="layout">
+      <!-- Filters -->
+      <aside class="sidebar" aria-label="Filters and information">
+        <section class="controls" aria-label="Filters">
+          <h2 class="sidebar-title" id="filtersTitle">খুঁজে নিন</h2>
+          <label class="field">
+            <span id="areaLabel">এলাকা</span>
+            <select id="areaFilter">
+              <option value="all">সব এলাকা</option>
+            </select>
+          </label>
+          <label class="field">
+            <span id="sortLabel">সাজান</span>
+            <select id="sortSelect">
+              <option value="recommended" id="sortRecommended">সেরা মিল প্রথমে</option>
+              <option value="latest" id="sortLatest">দেরিতে বন্ধ হয় যেগুলো</option>
+              <option value="name" id="sortName">নাম অনুযায়ী</option>
+            </select>
+          </label>
+          <button id="clearFilters" class="btn btn-ghost clear-btn" type="button">ফিল্টার মুছে ফেলুন</button>
+        </section>
 
-    <!-- About / honesty -->
-    <section class="about">
-      <h2 id="aboutTitle">তথ্য যাচাই নিয়ে</h2>
-      <p id="aboutText">সব ফোন নম্বর, ঠিকানা ও সময় প্রকাশিত উৎস থেকে যাচাই করা — ২৫ নভেম্বর ২০২৬। কোনো নম্বর বা সময় বানানো হয়নি। যেখানে যাচাই করা যায়নি, সেখানে “নিশ্চিত নয়” লেখা আছে। সময় বদলাতে পারে, তাই যাওয়ার আগে ফোন করে নিন।</p>
-      <p id="aboutSources" class="sources">উৎস: Islamia Pharmacy (অফিসিয়াল সাইট), Lazz Pharma, Tamanna Pharmacy, হাসপাতাল ফার্মেসি, প্রকাশিত ডিরেক্টরি। পুরো তালিকা ও উৎস GitHub রিপোতে আছে।</p>
-    </section>
+        <section class="about">
+          <h2 id="aboutTitle">তথ্য যাচাই নিয়ে</h2>
+          <p id="aboutText">সব ফোন নম্বর, ঠিকানা ও সময় প্রকাশিত উৎস থেকে যাচাই করা — ২৫ নভেম্বর ২০২৬। কোনো নম্বর বা সময় বানানো হয়নি। যেখানে যাচাই করা যায়নি, সেখানে “নিশ্চিত নয়” লেখা আছে। সময় বদলাতে পারে, তাই যাওয়ার আগে ফোন করে নিন।</p>
+          <p id="aboutSources" class="sources">উৎস: Islamia Pharmacy (অফিসিয়াল সাইট), Lazz Pharma, Tamanna Pharmacy, হাসপাতাল ফার্মেসি, প্রকাশিত ডিরেক্টরি। পুরো তালিকা ও উৎস GitHub রিপোতে আছে।</p>
+        </section>
+      </aside>
+
+      <!-- Results -->
+      <section class="results" aria-label="Pharmacies">
+        <p id="resultCount" class="result-count"></p>
+        <ul id="pharmacyList" class="pharmacy-list"></ul>
+        <p id="emptyState" class="empty hidden">কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।</p>
+        <p id="loadingState" class="empty">তালিকা লোড হচ্ছে…</p>
+      </section>
+    </div>
   </main>
 
   <footer>
