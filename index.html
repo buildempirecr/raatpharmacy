@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Find an open pharmacy near you at night — hours, phone, directions in one tap.">
+  <title>RaatPharmacy — রাতে খোলা ফার্মেসি খুঁজুন | ঢাকা</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🌙</span>
+      <div>
+        <h1>RaatPharmacy</h1>
+        <p id="pitch">রাতে খোলা ফার্মেসি খুঁজুন — সময়, ফোন, দিকনির্দেশনা এক ট্যাপে।</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="clock" id="clock" aria-live="off">—</div>
+      <button id="langToggle" class="lang-btn" type="button" aria-label="Switch language">English</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Live summary -->
+    <section class="summary" aria-label="Summary">
+      <div class="stat"><strong id="statTotal">–</strong><span id="statTotalLabel">ফার্মেসি</span></div>
+      <div class="stat stat-open"><strong id="statOpen">–</strong><span id="statOpenLabel">এখন খোলা</span></div>
+      <div class="stat"><strong id="statLate">–</strong><span id="statLateLabel">রাত ১২টার পরেও খোলা</span></div>
+    </section>
+
+    <p class="stock-note" id="stockNote">⚠️ স্টকের তথ্য লাইভ নয় — যাওয়ার আগে ফোন করে ওষুধ আছে কিনা জেনে নিন।</p>
+
+    <!-- Controls -->
+    <section class="controls" aria-label="Search and filters">
+      <label class="search-wrap">
+        <span class="visually-hidden" id="searchLabel">খুঁজুন</span>
+        <input id="searchInput" type="search" placeholder="ফার্মেসি, এলাকা বা ঠিকানা লিখুন…" aria-labelledby="searchLabel" autocomplete="off">
+      </label>
+      <div class="filter-row">
+        <label class="select-wrap">
+          <span id="areaLabel">এলাকা</span>
+          <select id="areaFilter">
+            <option value="all">সব এলাকা</option>
+          </select>
+        </label>
+        <label class="toggle-wrap">
+          <input id="openNowToggle" type="checkbox">
+          <span id="openNowLabel">শুধু এখন খোলা</span>
+        </label>
+        <label class="toggle-wrap">
+          <input id="lateToggle" type="checkbox">
+          <span id="lateLabel">রাত ১২টার পরেও খোলা</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="results" aria-label="Pharmacies">
+      <p id="resultCount" class="result-count"></p>
+      <ul id="pharmacyList" class="pharmacy-list"></ul>
+      <p id="emptyState" class="empty hidden">কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।</p>
+      <p id="loadingState" class="empty">তালিকা লোড হচ্ছে…</p>
+    </section>
+
+    <!-- About / honesty -->
+    <section class="about">
+      <h2 id="aboutTitle">তথ্য যাচাই নিয়ে</h2>
+      <p id="aboutText">সব ফোন নম্বর, ঠিকানা ও সময় প্রকাশিত উৎস থেকে যাচাই করা — ২৫ নভেম্বর ২০২৬। কোনো নম্বর বা সময় বানানো হয়নি। যেখানে যাচাই করা যায়নি, সেখানে “নিশ্চিত নয়” লেখা আছে। সময় বদলাতে পারে, তাই যাওয়ার আগে ফোন করে নিন।</p>
+      <p id="aboutSources" class="sources">উৎস: Islamia Pharmacy (অফিসিয়াল সাইট), Lazz Pharma, Tamanna Pharmacy, হাসপাতাল ফার্মেসি, প্রকাশিত ডিরেক্টরি। পুরো তালিকা ও উৎস GitHub রিপোতে আছে।</p>
+    </section>
+  </main>
+
+  <footer>
+    <p id="footerText">RaatPharmacy — Arohon Build for Bangladesh। জরুরি অবস্থায় ৯৯৯-এ কল করুন।</p>
+  </footer>
+
+  <!-- Correction form: one shared panel, opened per pharmacy -->
+  <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
+  <section id="correctSheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle">সময় ভুল মনে হচ্ছে?</h2>
+    <p class="sheet-sub" id="sheetPharmacy">—</p>
+    <label class="note-label" for="correctInput" id="correctLabel">সঠিক সময়টা লিখুন (ঐচ্ছিক)</label>
+    <input id="correctInput" type="text" maxlength="120" placeholder="যেমন: এখন রাত ১১টায় বন্ধ হয়">
+    <div class="sheet-actions">
+      <button id="cancelCorrect" class="btn btn-ghost" type="button">বাতিল</button>
+      <button id="submitCorrect" class="btn btn-primary" type="button">জানান</button>
+    </div>
+    <p class="sheet-note" id="sheetNote">আপনার জানানো তথ্য শুধু আপনার ব্রাউজারেই থাকবে, তালিকার সময় বদলাবে না — যাচাই না হওয়া পর্যন্ত “যাচাই হয়নি” হিসেবে দেখাবে।</p>
+  </section>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
