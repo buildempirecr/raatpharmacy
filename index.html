@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <a class="skip-link" href="#main" id="skipLink">মূল বিষয়বস্তুতে যান</a>
   <header class="topbar">
     <div class="topbar-in">
       <div class="brand">
@@ -25,13 +26,13 @@
         </div>
       </div>
       <div class="top-right">
-        <div class="clock" id="clock" aria-live="off">—</div>
+        <div class="clock" id="clock" role="timer" aria-live="off">—</div>
         <button id="langToggle" class="lang-btn" type="button" aria-label="Switch language">English</button>
       </div>
     </div>
   </header>
 
-  <main>
+  <main id="main" tabindex="-1">
     <!-- Tonight at a glance: search first, stats as filter chips -->
     <section class="hero" aria-label="Find a pharmacy tonight">
       <h2 class="hero-title"><span id="heroTitle">আজ রাতে খোলা ফার্মেসি</span></h2>
@@ -86,7 +87,7 @@
 
       <!-- Results -->
       <section class="results" aria-label="Pharmacies">
-        <p id="resultCount" class="result-count"></p>
+        <p id="resultCount" class="result-count" aria-live="polite" aria-atomic="true"></p>
         <ul id="pharmacyList" class="pharmacy-list"></ul>
         <p id="emptyState" class="empty hidden">কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।</p>
         <p id="loadingState" class="empty">তালিকা লোড হচ্ছে…</p>

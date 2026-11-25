@@ -117,6 +117,7 @@ function nextLine(p, nowMin, lang, t) {
 // ---------- i18n ----------
 const I18N = {
   bn: {
+    skipLink: 'মূল বিষয়বস্তুতে যান',
     pitch: 'রাতে খোলা ফার্মেসি খুঁজুন — সময়, ফোন, দিকনির্দেশনা এক ট্যাপে।',
     heroTitle: 'আজ রাতে খোলা ফার্মেসি',
     heroSub: 'ঢাকায় এখন কোন ফার্মেসি খোলা আছে — এক নজরে দেখে নিন, তারপর কল করুন।',
@@ -160,6 +161,7 @@ const I18N = {
     clockSuffix: '',
   },
   en: {
+    skipLink: 'Skip to main content',
     pitch: 'Find an open pharmacy near you at night — hours, phone, directions in one tap.',
     heroTitle: 'Open pharmacies tonight',
     heroSub: 'See which Dhaka pharmacies are open right now — then call ahead.',
@@ -299,6 +301,10 @@ function esc(s) {
 function cardHtml(p, t) {
   const now = nowMinutes();
   const open = isOpenAt(p, now);
+  // All data strings (names, addresses, hours, notes, sources) are
+  // English; when the page is Bangla, mark them lang="en" so screen
+  // readers pronounce them correctly.
+  const en = lang === 'bn' ? ' lang="en"' : '';
   const badge = open === true
     ? `<span class="badge badge-open"><span class="dot" aria-hidden="true"></span>${esc(t.openNow)}</span>`
     : open === false
@@ -308,7 +314,7 @@ function cardHtml(p, t) {
   const hoursLine = p.hours24
     ? `<p class="hours-line"><strong>${esc(t.open24)}</strong></p>`
     : p.hoursText
-      ? `<p class="hours-line"><strong>${esc(p.hoursText)}</strong></p>`
+      ? `<p class="hours-line"><strong${en}>${esc(p.hoursText)}</strong></p>`
       : `<p class="hours-line">${esc(t.hoursUnknown)}</p>`;
   const next = nextLine(p, now, lang, t);
   const until = minutesUntil(p, now);
@@ -330,24 +336,24 @@ function cardHtml(p, t) {
   const corr = corrections[p.id];
   const corrBadge = corr
     ? `<p class="correction-badge">${esc(t.correctionReported)}${corr.text ? ` — “${esc(corr.text)}”` : ''}</p>` : '';
-  const notes = p.notes ? `<p class="notes">${esc(p.notes)}</p>` : '';
+  const notes = p.notes ? `<p class="notes"${en}>${esc(p.notes)}</p>` : '';
   return `
     <li class="card${open === true ? ' card-open' : ''}" data-id="${esc(p.id)}">
       <div class="card-head">
         <div>
-          <h3>${esc(p.name)}</h3>
-          <p class="area">${esc(areaLabel(p.area, lang))} • ${esc(p.chain)}</p>
+          <h3${en}>${esc(p.name)}</h3>
+          <p class="area">${esc(areaLabel(p.area, lang))} • <span${en}>${esc(p.chain)}</span></p>
         </div>
         <div class="card-badges">${badge}${late}</div>
       </div>
       ${hoursLine}
       ${next ? `<p class="next-line">${esc(next)}</p>` : ''}
       ${countdown}
-      <p class="address">${esc(p.address)}</p>
+      <p class="address"${en}>${esc(p.address)}</p>
       <div class="actions">${callBtn}${waBtn}${dirBtn}</div>
       ${phoneBlock}
       <p class="meta-line">${esc(t.confirmStock)}</p>
-      <p class="meta-line">${esc(t.verifiedOn)} ${esc(p.lastVerified)} • ${esc(p.source)}</p>
+      <p class="meta-line">${esc(t.verifiedOn)} ${esc(p.lastVerified)} • <span${en}>${esc(p.source)}</span></p>
       ${notes}
       ${corrBadge}
       <button class="link-btn" type="button" data-correct="${esc(p.id)}">${esc(t.hoursWrong)}</button>
@@ -357,6 +363,7 @@ function cardHtml(p, t) {
 function render() {
   const t = I18N[lang];
   document.documentElement.lang = lang;
+  document.getElementById('skipLink').textContent = t.skipLink;
   document.getElementById('pitch').textContent = t.pitch;
   document.getElementById('heroTitle').textContent = t.heroTitle;
   document.getElementById('heroSub').textContent = t.heroSub;
@@ -435,7 +442,11 @@ let correctingId = null;
 function openSheet(id) {
   correctingId = id;
   const p = pharmacies.find(x => x.id === id);
-  document.getElementById('sheetPharmacy').textContent = p ? p.name : '';
+  const sheetPharmacy = document.getElementById('sheetPharmacy');
+  sheetPharmacy.textContent = p ? p.name : '';
+  // Pharmacy names are English data.
+  if (lang === 'bn') sheetPharmacy.setAttribute('lang', 'en');
+  else sheetPharmacy.removeAttribute('lang');
   document.getElementById('correctInput').value = '';
   document.getElementById('correctSheet').classList.remove('hidden');
   document.getElementById('sheetBackdrop').classList.remove('hidden');
