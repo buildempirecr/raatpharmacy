@@ -221,6 +221,36 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
   background: var(--bg-soft); color: var(--text); cursor: pointer;
 }
 .clear-btn { width: 100%; justify-content: center; min-height: 48px; }
+.nearest-btn { width: 100%; justify-content: center; min-height: 48px; margin-bottom: 10px; }
+.nearest-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+
+/* Offline banner + no-JS fallback */
+.offline-note {
+  margin: 14px 0 0; font-size: 14px; font-weight: 600; color: var(--amber-ink);
+  background: var(--amber-soft); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px 14px;
+}
+.noscript-note {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-top: 20px; box-shadow: var(--shadow-1);
+}
+.noscript-note p { margin: 0 0 10px; font-size: 15px; }
+.noscript-note ul { margin: 0; padding-left: 20px; font-size: 14.5px; line-height: 1.9; }
+
+/* Skeleton loading cards */
+.skeleton { pointer-events: none; }
+.sk-line { border-radius: 8px; background: var(--surface-2); margin-bottom: 12px; animation: shimmer 1.4s ease-in-out infinite; }
+.sk-title { height: 22px; width: 65%; }
+.sk-sub { height: 15px; width: 85%; }
+.sk-btn { height: 48px; width: 55%; border-radius: 999px; margin-bottom: 0; }
+@keyframes shimmer { 0% { opacity: .55; } 50% { opacity: 1; } 100% { opacity: .55; } }
+
+/* Deep-link highlight */
+.card-highlight { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* Empty / error states */
+.empty .btn { margin-top: 14px; }
+.error-text { color: var(--red); font-weight: 600; margin: 0; }
 
 .about {
   margin-top: 16px; background: var(--surface);
@@ -233,11 +263,12 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
 
 /* ---------- Results / cards ---------- */
 .result-count { color: var(--muted); font-size: 14px; margin: 2px 2px 12px; }
-.pharmacy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.pharmacy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 .card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-1);
   transition: transform .18s ease, box-shadow .18s ease;
+  min-width: 0;
 }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
 .card-open { background: var(--surface); border-color: var(--border-strong); }
@@ -247,21 +278,28 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
 .card .area { color: var(--muted); font-size: 13.5px; margin: 3px 0 0; }
 .card-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 .badge {
-  font-size: 13px; font-weight: 700; line-height: 1.3;
-  border-radius: 999px; padding: 6px 11px; white-space: nowrap;
+  font-size: 14px; font-weight: 700; line-height: 1.3;
+  border-radius: 999px; padding: 8px 13px; white-space: nowrap;
   display: inline-flex; align-items: center; gap: 6px;
 }
-.badge .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.badge .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
 .badge-open { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--border-strong); }
 .badge-open .dot { animation: pulse 2.2s ease-out infinite; }
 .badge-closed { background: var(--red-soft); color: var(--red); border: 1px solid var(--border); }
 .badge-unknown { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
 .badge-late { background: var(--amber-soft); color: var(--amber-ink); border: 1px solid var(--border); }
+.badge-unverified { background: var(--amber-soft); color: var(--amber-ink); border: 1px solid var(--border); font-size: 13px; padding: 5px 10px; }
+.tier-badge {
+  font-size: 12.5px; font-weight: 700; line-height: 1.3;
+  border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+  background: var(--surface-2); color: var(--muted); border: 1px solid var(--border);
+}
 .hours-line { margin: 12px 0 2px; font-size: 15.5px; }
 .next-line { margin: 0 0 10px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.countdown { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
-.countdown-soon { color: var(--amber-ink); }
-.address { margin: 0 0 14px; font-size: 14px; color: var(--muted); }
+.countdown { margin: 0 0 10px; font-size: 13.5px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.countdown-soon { color: var(--amber-ink); font-weight: 700; }
+.distance { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.address { margin: 0 0 14px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -278,16 +316,18 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); }
 .btn:active { transform: scale(.97); }
 .btn[disabled] { opacity: .45; cursor: default; }
+/* Secondary icon-only buttons (WhatsApp / directions / share): 48px. */
+.btn-icon { width: 48px; min-width: 48px; padding: 11px 0; }
 .phone-line { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.phone-line a { color: var(--text); font-weight: 600; text-decoration: none; }
-.phone-line a:hover { text-decoration: underline; text-underline-offset: 3px; }
-.meta-line { margin: 6px 0 0; font-size: 13px; color: var(--muted-2); }
+.phone-line .phone-text { color: var(--text); font-weight: 600; }
+.unverified-note { margin: 6px 0 0; font-size: 13.5px; color: var(--amber-ink); overflow-wrap: anywhere; }
+.meta-line { margin: 6px 0 0; font-size: 13px; color: var(--muted-2); overflow-wrap: anywhere; }
 .correction-badge {
   margin-top: 10px; font-size: 13px; color: var(--amber-ink);
   background: var(--amber-soft); border: 1px solid var(--border);
   border-radius: 8px; padding: 8px 10px;
 }
-.card .notes { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); }
+.card .notes { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; }
 .link-btn {
   background: none; border: none; color: var(--muted-2); font-size: 13.5px; font-family: inherit;
   padding: 12px 0 0; min-height: 44px; cursor: pointer; text-decoration: underline;
@@ -323,8 +363,9 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 8px 
   background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14.5px;
   border-radius: 999px; padding: 12px 20px; min-height: 48px; z-index: 60;
   box-shadow: var(--shadow-2); max-width: calc(100vw - 32px);
-  display: inline-flex; align-items: center; text-align: center;
+  display: inline-flex; align-items: center; gap: 10px; text-align: center;
 }
+.toast a { color: var(--accent-ink); font-weight: 800; white-space: nowrap; }
 
 /* ---------- Breakpoints ---------- */
 @media (min-width: 640px) {
@@ -333,8 +374,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 8px 
   .brand h1 { font-size: 28px; }
 }
 @media (min-width: 768px) {
-  .pharmacy-list { grid-template-columns: 1fr 1fr; }
-  .controls { position: sticky; top: 16px; }
+  .pharmacy-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 1024px) {
   .layout { grid-template-columns: 300px 1fr; align-items: start; }
@@ -342,12 +382,15 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 8px 
   .controls { position: static; }
   .hero { padding-top: 36px; }
 }
-@media (max-width: 767px) {
-  .controls {
-    position: sticky; top: 0; z-index: 30;
-    border-radius: 0 0 var(--radius) var(--radius);
-  }
-  .layout { margin-top: 14px; }
+/* Below desktop width the filter panel is STATIC (never sticky, never
+   overlapping) and the About section moves after the results, so the
+   pharmacy list is reachable within one screen of scrolling. */
+@media (max-width: 1023px) {
+  .layout { display: flex; flex-direction: column; margin-top: 14px; }
+  .sidebar { display: contents; }
+  .controls { position: static; order: 1; }
+  .results { order: 2; }
+  .about { order: 3; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

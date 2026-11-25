@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Find an open pharmacy near you at night — hours, phone, directions in one tap.">
   <meta name="theme-color" content="#06231f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preload" href="data/pharmacies.json" as="fetch" crossorigin="anonymous">
   <title>RaatPharmacy — রাতে খোলা ফার্মেসি খুঁজুন | ঢাকা</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230a2e28'/%3E%3Cpath d='M17.5 13.5A6.5 6.5 0 0 1 10.5 6.5 6.5 6.5 0 1 0 17.5 13.5Z' fill='%2334e5a6'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,6 +35,24 @@
   </header>
 
   <main id="main" tabindex="-1">
+    <noscript>
+      <div class="noscript-note">
+        <p><strong>জাভাস্ক্রিপ্ট ছাড়া এই তালিকা দেখা যাবে না।</strong> জরুরি অবস্থায় ৯৯৯-এ কল করুন। নিচে ২৪ ঘণ্টা খোলা ফার্মেসিগুলোর নাম ও ফোন দেওয়া আছে (২৫ নভেম্বর ২০২৬-এর যাচাই করা তথ্য):</p>
+        <ul>
+          <li>Lazz Pharma — Russel Square — 02-9117839</li>
+          <li>Lazz Pharma — Banasree — 01842 093 701</li>
+          <li>Lazz Pharma — Dhaka Medical College Hospital — 01781 860 609</li>
+          <li>IBN SINA Pharmacy — Dhanmondi — 09610 010 615</li>
+          <li>Green Life Hospital Pharmacy — 10653 (hotline)</li>
+          <li>Khidmah Hospital Pharmacy — 09606 063 030</li>
+          <li>Square Hospital Pharmacy — 10616 (hotline)</li>
+          <li>Evercare Hospital Pharmacy — 10678 (hotline)</li>
+          <li>United Hospital Pharmacy — 02-8866000</li>
+          <li>24 Hour Pharmacy — Dhanmondi — 02-9673512</li>
+        </ul>
+      </div>
+    </noscript>
+    <p id="offlineNote" class="offline-note hidden" role="status"></p>
     <!-- Tonight at a glance: search first, stats as filter chips -->
     <section class="hero" aria-label="Find a pharmacy tonight">
       <h2 class="hero-title"><span id="heroTitle">আজ রাতে খোলা ফার্মেসি</span></h2>
@@ -75,6 +95,7 @@
               <option value="name" id="sortName">নাম অনুযায়ী</option>
             </select>
           </label>
+          <button id="nearestBtn" class="btn btn-ghost nearest-btn" type="button" aria-pressed="false">সবচেয়ে কাছে</button>
           <button id="clearFilters" class="btn btn-ghost clear-btn" type="button">ফিল্টার মুছে ফেলুন</button>
         </section>
 
@@ -89,7 +110,14 @@
       <section class="results" aria-label="Pharmacies">
         <p id="resultCount" class="result-count" aria-live="polite" aria-atomic="true"></p>
         <ul id="pharmacyList" class="pharmacy-list"></ul>
-        <p id="emptyState" class="empty hidden">কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।</p>
+        <div id="emptyState" class="empty hidden">
+          <p id="emptyText">কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।</p>
+          <button id="emptyReset" class="btn btn-primary" type="button">সব ফিল্টার মুছুন</button>
+        </div>
+        <div id="errorState" class="empty hidden" role="alert">
+          <p class="error-text"></p>
+          <button id="retryLoad" class="btn btn-primary" type="button">আবার চেষ্টা করুন</button>
+        </div>
         <p id="loadingState" class="empty">তালিকা লোড হচ্ছে…</p>
       </section>
     </div>
