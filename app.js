@@ -275,8 +275,6 @@ const I18N = {
     heroTitle: 'আজ রাতে খোলা ফার্মেসি',
     heroSub: 'ঢাকায় এখন কোন ফার্মেসি খোলা আছে — এক নজরে দেখে নিন, তারপর কল করুন।',
     openNowCta: 'এখন খোলা ফার্মেসি দেখুন',
-    heroImgAlt: 'ঢাকার রাতে খোলা ফার্মেসির ইলাস্ট্রেশন — জ্বলজ্বলে সবুজ ক্রস আর চাঁদ',
-    heroCaption: 'রাতের ঢাকা — ইলাস্ট্রেশন',
     filtersTitle: 'খুঁজে নিন',
     sortLabel: 'সাজান',
     sortRecommended: 'সেরা মিল প্রথমে',
@@ -342,8 +340,6 @@ const I18N = {
     heroTitle: 'Open pharmacies tonight',
     heroSub: 'See which Dhaka pharmacies are open right now — then call ahead.',
     openNowCta: 'Show pharmacies open now',
-    heroImgAlt: 'Illustration of an open pharmacy at night in Dhaka — glowing green cross and crescent moon',
-    heroCaption: 'Night in Dhaka — illustration',
     filtersTitle: 'Refine',
     sortLabel: 'Sort by',
     sortRecommended: 'Best match first',
@@ -724,8 +720,6 @@ function renderPageText(text) {
   document.getElementById('heroTitle').textContent = text.heroTitle;
   document.getElementById('heroSub').textContent = text.heroSub;
   document.getElementById('openNowCtaText').textContent = text.openNowCta;
-  document.getElementById('heroImg').alt = text.heroImgAlt;
-  document.getElementById('heroCaption').textContent = text.heroCaption;
   document.getElementById('filtersTitle').textContent = text.filtersTitle;
   document.getElementById('sortLabel').textContent = text.sortLabel;
   document.getElementById('sortRecommended').textContent = text.sortRecommended;

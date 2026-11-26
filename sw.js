@@ -13,10 +13,10 @@
 //   timeout so a stalled connection falls back to the cache instead
 //   of hanging the page on its skeleton.
 // WHY the version in the cache name: a service worker only picks up
-// changed files when the cache name changes, so bump v6 -> v7 (and so
+// changed files when the cache name changes, so bump v7 -> v8 (and so
 // on) on every release that touches a cached file, or visitors keep
 // seeing the old version.
-const CACHE = 'raatpharmacy-v7';
+const CACHE = 'raatpharmacy-v8';
 const ASSETS = [
   './',
   'index.html',
@@ -28,7 +28,6 @@ const ASSETS = [
   'icon.svg',
   'icon-192.png',
   'icon-512.png',
-  'img/hero.webp',
   'blog/',
   'blog/index.html',
   'blog/blog.css',

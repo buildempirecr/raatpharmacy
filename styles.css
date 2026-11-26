@@ -217,9 +217,6 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
    caption says plainly that it is an illustration — honesty is part
    of the craft. Fixed aspect ratio + width/height attributes on the
    <img> mean zero layout shift while it loads. */
-.hero-figure { margin: 20px 0 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-1); }
-.hero-figure img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
-.hero-figure figcaption { font-size: 13px; color: var(--muted); background: var(--surface); padding: 8px 14px; border-top: 1px solid var(--border); }
 .search-wrap {
   display: flex; align-items: center; gap: 10px;
   background: var(--surface); border: 1px solid var(--border-strong);
@@ -540,7 +537,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 8px 
   body::before { display: none !important; }
   .topbar { position: static !important; background: #fff !important; border-bottom: 2px solid #111; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .topbar .brand p, .topbar .clock, .top-right { color: #333 !important; }
-  .top-right .lang-btn, .hero-figure, .hero-cta, .search-wrap, .stat-chips,
+  .top-right .lang-btn, .hero-cta, .search-wrap, .stat-chips,
   .sidebar, .sheet, .sheet-backdrop, .toast, .skip-link, .actions,
   .link-btn, .guides, footer .footer-links { display: none !important; }
   .card, .guide-card { background: #fff !important; color: #111 !important; border: 1px solid #999 !important; box-shadow: none !important; break-inside: avoid; }
