@@ -18,13 +18,37 @@ function toMinutes(hhmm) {
   return h * 60 + m;
 }
 
+// Day-based hours. hoursByDay maps a weekday key to [open, close] or
+// null (closed that day). "breaks" lists daily closed intervals, e.g.
+// [["14:00","16:00"]] for a 2–4 PM break.
+// Returns {hours24:true} | {open, close} | {closed:true} | null (unknown).
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+function hoursForDay(p, date) {
+  if (p.hours24) return { hours24: true };
+  const key = DAY_KEYS[(date || new Date()).getDay()];
+  if (p.hoursByDay && Object.prototype.hasOwnProperty.call(p.hoursByDay, key)) {
+    const v = p.hoursByDay[key];
+    if (v === null) return { closed: true };
+    return { open: v[0], close: v[1] };
+  }
+  if (!p.open || !p.close) return null;
+  return { open: p.open, close: p.close };
+}
+function inBreak(p, nowMin) {
+  if (!p.breaks) return false;
+  return p.breaks.some(([bs, be]) => nowMin >= toMinutes(bs) && nowMin < toMinutes(be));
+}
+
 // Is this pharmacy open at `nowMin` (minutes since midnight)?
 // Returns true / false / null (null = hours not confirmed).
-function isOpenAt(p, nowMin) {
-  if (p.hours24) return true;
-  if (!p.open || !p.close) return null;
-  const open = toMinutes(p.open);
-  const close = toMinutes(p.close);
+function isOpenAt(p, nowMin, date) {
+  const h = hoursForDay(p, date);
+  if (!h) return null;
+  if (h.closed) return false;
+  if (h.hours24) return true;
+  if (inBreak(p, nowMin)) return false;
+  const open = toMinutes(h.open);
+  const close = toMinutes(h.close);
   if (close > open) return nowMin >= open && nowMin < close;
   if (close === 0) return nowMin >= open; // closes at midnight
   return nowMin >= open || nowMin < close; // overnight, e.g. 08:00-01:30
@@ -43,14 +67,35 @@ function isLateNight(p) {
 
 // Minutes until the pharmacy closes (if open) or opens (if closed).
 // Returns { kind: 'closes' | 'opens', mins } or null (24h / unknown).
-function minutesUntil(p, nowMin) {
-  if (p.hours24) return null;
-  if (!p.open || !p.close) return null;
-  const open = toMinutes(p.open);
-  const close = toMinutes(p.close);
-  if (isOpenAt(p, nowMin) === true) {
+// Day-aware: a Friday-closed pharmacy reports the time until tomorrow's
+// opening; a mid-day break reports the time until the break ends.
+function minutesUntil(p, nowMin, date) {
+  const today = date || new Date();
+  const h = hoursForDay(p, today);
+  if (!h || h.hours24) return null;
+  if (h.closed) {
+    const tom = new Date(today);
+    tom.setDate(tom.getDate() + 1);
+    const th = hoursForDay(p, tom);
+    if (!th || th.closed || th.hours24) return null;
+    return { kind: 'opens', mins: (1440 - nowMin) + toMinutes(th.open) };
+  }
+  if (inBreak(p, nowMin)) {
+    const br = p.breaks.find(([bs, be]) => nowMin >= toMinutes(bs) && nowMin < toMinutes(be));
+    if (br) return { kind: 'opens', mins: toMinutes(br[1]) - nowMin };
+  }
+  const open = toMinutes(h.open);
+  const close = toMinutes(h.close);
+  if (isOpenAt(p, nowMin, today) === true) {
     let mins;
-    if (close > open) mins = close - nowMin;
+    // A break before the regular close ends the open stretch early.
+    const nextBreak = (p.breaks || [])
+      .map(([bs]) => toMinutes(bs))
+      .filter(s => s > nowMin && (close > open ? s < close : true))
+      .sort((a, b) => a - b)[0];
+    if (nextBreak != null) {
+      mins = nextBreak - nowMin;
+    } else if (close > open) mins = close - nowMin;
     else if (nowMin >= open) mins = (1440 - nowMin) + close; // overnight
     else mins = close - nowMin; // after midnight, still open
     return { kind: 'closes', mins };
@@ -65,11 +110,11 @@ function minutesUntil(p, nowMin) {
 
 // Effective closing time for "closes latest" sorting: 24h first, then
 // overnight closes count after midnight (e.g. 01:30 -> 25:30).
-function effectiveClose(p) {
-  if (p.hours24) return 2880;
-  if (!p.open || !p.close) return -1;
-  const open = toMinutes(p.open);
-  const close = toMinutes(p.close);
+function effectiveClose(p, date) {
+  const h = hoursForDay(p, date);
+  if (!h || h.closed || h.hours24) return h && h.hours24 ? 2880 : -1;
+  const open = toMinutes(h.open);
+  const close = toMinutes(h.close);
   return close <= open && close > 0 ? close + 1440 : close;
 }
 
@@ -113,7 +158,7 @@ function formatTime(hhmm, lang) {
 function bnDigits(s) {
   return String(s).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[Number(d)]);
 }
-function num(n, lang) {
+function formatNumber(n, lang) {
   return lang === 'bn' ? bnDigits(n) : String(n);
 }
 
@@ -138,12 +183,24 @@ function formatDistance(km, lang) {
 
 // Next transition text: "Closes at 1:30 AM" or "Opens at 8:00 AM".
 // 24h pharmacies already state it in the hours line, so no repeat.
-function nextLine(p, nowMin, lang, t) {
-  if (p.hours24) return '';
-  if (!p.open || !p.close) return '';
+// Day-aware: a Friday-closed pharmacy shows tomorrow's opening time.
+function nextLine(p, nowMin, lang, text) {
+  const h = hoursForDay(p, new Date());
+  if (!h || h.hours24) return '';
+  if (h.closed) {
+    const tom = new Date();
+    tom.setDate(tom.getDate() + 1);
+    const th = hoursForDay(p, tom);
+    if (!th || th.closed || th.hours24) return '';
+    return `${text.opensAt} ${formatTime(th.open, lang)}`;
+  }
+  if (inBreak(p, nowMin)) {
+    const br = p.breaks.find(([bs, be]) => nowMin >= toMinutes(bs) && nowMin < toMinutes(be));
+    if (br) return `${text.opensAt} ${formatTime(br[1], lang)}`;
+  }
   const open = isOpenAt(p, nowMin);
-  if (open) return `${t.closesAt} ${formatTime(p.close, lang)}`;
-  return `${t.opensAt} ${formatTime(p.open, lang)}`;
+  if (open) return `${text.closesAt} ${formatTime(h.close, lang)}`;
+  return `${text.opensAt} ${formatTime(h.open, lang)}`;
 }
 
 // ---------- i18n ----------
@@ -177,6 +234,7 @@ const I18N = {
     closingSoon: 'শীঘ্রই বন্ধ হবে — এখনই কল করুন',
     lateBadge: 'রাত ১২টার পরেও খোলা',
     call: 'কল করুন', whatsapp: 'WhatsApp', directions: 'দিকনির্দেশনা',
+    dialing: 'ডায়াল হচ্ছে…',
     share: 'শেয়ার করুন',
     phoneNotListed: 'ফোন নম্বর তালিকায় নেই',
     phoneUnverified: 'অযাচাইকৃত',
@@ -186,7 +244,7 @@ const I18N = {
     sourceOfficial: 'অফিসিয়াল', sourceDirectory: 'ডিরেক্টরি', sourceHospital: 'হাসপাতাল',
     hoursWrong: 'সময় ভুল মনে হচ্ছে?',
     correctionReported: 'সংশোধন জানানো হয়েছে — যাচাই হয়নি',
-    results: (n, total) => `${num(total, 'bn')}টির মধ্যে ${num(n, 'bn')}টি দেখাচ্ছে`,
+    results: (n, total) => `${formatNumber(total, 'bn')}টির মধ্যে ${formatNumber(n, 'bn')}টি দেখাচ্ছে`,
     empty: 'কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।',
     emptyReset: 'সব ফিল্টার মুছুন',
     loading: 'তালিকা লোড হচ্ছে…',
@@ -194,8 +252,8 @@ const I18N = {
     retry: 'আবার চেষ্টা করুন',
     offlineNote: savedAt => `আপনি অফলাইনে আছেন — সর্বশেষ সেভ করা তালিকা দেখাচ্ছেন (${savedAt})।`,
     aboutTitle: 'তথ্য যাচাই নিয়ে',
-    aboutText: 'সব ফোন নম্বর, ঠিকানা ও সময় প্রকাশিত উৎস থেকে যাচাই করা — ২৫ নভেম্বর ২০২৬। কোনো নম্বর বা সময় বানানো হয়নি। যেখানে যাচাই করা যায়নি, সেখানে “নিশ্চিত নয়” লেখা আছে। সময় বদলাতে পারে, তাই যাওয়ার আগে ফোন করে নিন।',
-    aboutSources: 'উৎস: Islamia Pharmacy (অফিসিয়াল সাইট), Lazz Pharma, Tamanna Pharmacy, হাসপাতাল ফার্মেসি, প্রকাশিত ডিরেক্টরি। পুরো তালিকা ও উৎস GitHub রিপোতে আছে।',
+    aboutText: 'সব ফোন নম্বর, ঠিকানা ও সময় প্রকাশিত উৎস থেকে যাচাই করা — ২৬ নভেম্বর ২০২৬। কোনো নম্বর বা সময় বানানো হয়নি। যেখানে যাচাই করা যায়নি, সেখানে “নিশ্চিত নয়” লেখা আছে। সময় বদলাতে পারে, তাই যাওয়ার আগে ফোন করে নিন।',
+    aboutSources: 'উৎস: Islamia Pharmacy (অফিসিয়াল সাইট), Lazz Pharma (অফিসিয়াল সাইট), Popular Medicine Corner, IBN SINA, Tamanna Pharmacy, হাসপাতাল ফার্মেসি, প্রকাশিত ডিরেক্টরি। পুরো তালিকা ও উৎস GitHub রিপোতে আছে।',
     footer: 'RaatPharmacy — Arohon Build for Bangladesh। জরুরি অবস্থায় ৯৯৯-এ কল করুন।',
     sheetTitle: 'সময় ভুল মনে হচ্ছে?',
     sheetLabel: 'সঠিক সময়টা লিখুন (ঐচ্ছিক)',
@@ -206,7 +264,6 @@ const I18N = {
     tellTeam: 'টিমকে জানান',
     shareCopied: 'লিংক কপি হয়েছে।',
     langButton: 'English',
-    clockSuffix: '',
   },
   en: {
     skipLink: 'Skip to main content',
@@ -237,6 +294,7 @@ const I18N = {
     closingSoon: 'Closing soon — call now',
     lateBadge: 'Open past midnight',
     call: 'Call', whatsapp: 'WhatsApp', directions: 'Directions',
+    dialing: 'Dialing…',
     share: 'Share',
     phoneNotListed: 'Phone not listed',
     phoneUnverified: 'Unverified',
@@ -254,8 +312,8 @@ const I18N = {
     retry: 'Try again',
     offlineNote: savedAt => `You are offline — showing the last saved list (${savedAt}).`,
     aboutTitle: 'About the data',
-    aboutText: 'Every phone number, address and opening-hours value was verified from a published source — 25 Nov 2026. Nothing was invented. Where it could not be verified, it says “not confirmed”. Hours can change, so call ahead before going.',
-    aboutSources: 'Sources: Islamia Pharmacy (official site), Lazz Pharma, Tamanna Pharmacy, hospital pharmacies, published directories. The full list and sources are in the GitHub repo.',
+    aboutText: 'Every phone number, address and opening-hours value was verified from a published source — 26 Nov 2026. Nothing was invented. Where it could not be verified, it says “not confirmed”. Hours can change, so call ahead before going.',
+    aboutSources: 'Sources: Islamia Pharmacy (official site), Lazz Pharma (official site), Popular Medicine Corner, IBN SINA, Tamanna Pharmacy, hospital pharmacies, published directories. The full list and sources are in the GitHub repo.',
     footer: 'RaatPharmacy — Arohon Build for Bangladesh. In an emergency, call 999.',
     sheetTitle: 'Hours look wrong?',
     sheetLabel: 'Write the correct hours (optional)',
@@ -266,7 +324,6 @@ const I18N = {
     tellTeam: 'Tell the team',
     shareCopied: 'Link copied.',
     langButton: 'বাংলা',
-    clockSuffix: '',
   },
 };
 
@@ -277,15 +334,21 @@ const AREA_BN = {
   Kakrail: 'কাকরাইল', Shyamoli: 'শ্যামলী', Kalabagan: 'কলাবাগান', Pallabi: 'পল্লবী',
   Jatrabari: 'যাত্রাবাড়ী', Lalbagh: 'লালবাগ', Moghbazar: 'মগবাজার', Bashabo: 'বাসাবো',
   Malibagh: 'মালিবাগ',
+  Aftabnagar: 'আফতাবনগর', Agargaon: 'আগারগাঁও', Badda: 'বাড্ডা', Bosila: 'বসিলা',
+  Cantonment: 'ক্যান্টনমেন্ট', Dakshinkhan: 'দক্ষিণখান', Demra: 'ডেমরা',
+  'Elephant Road': 'এলিফ্যান্ট রোড', 'English Road': 'ইংলিশ রোড', Farmgate: 'ফার্মগেট',
+  Gandaria: 'গেন্ডারিয়া', 'Green Road': 'গ্রিন রোড', Kallyanpur: 'কল্যাণপুর',
+  Motijheel: 'মতিঝিল', 'Old Dhaka': 'পুরান ঢাকা', Ramna: 'রমনা',
+  Shantinagar: 'শান্তিনগর', Siddheswari: 'সিদ্ধেশ্বরী', Tejgaon: 'তেজগাঁও',
 };
 function areaLabel(area, lang) {
   return lang === 'bn' ? (AREA_BN[area] || area) : area;
 }
 function sourceTierLabel(tier, lang) {
-  const t = I18N[lang];
-  if (tier === 'official') return t.sourceOfficial;
-  if (tier === 'hospital') return t.sourceHospital;
-  return t.sourceDirectory;
+  const text = I18N[lang];
+  if (tier === 'official') return text.sourceOfficial;
+  if (tier === 'hospital') return text.sourceHospital;
+  return text.sourceDirectory;
 }
 
 // ---------- state ----------
@@ -401,102 +464,118 @@ const ICON_COMPASS = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none
 const ICON_MOON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 14.2A8.8 8.8 0 0 1 9.8 3.4 8.8 8.8 0 1 0 20.6 14.2Z"/></svg>';
 const ICON_SHARE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>';
 
-function el(html) {
-  const t = document.createElement('template');
-  t.innerHTML = html.trim();
-  return t.content.firstElementChild;
+function elementFromHtml(html) {
+  const templateElement = document.createElement('template');
+  templateElement.innerHTML = html.trim();
+  return templateElement.content.firstElementChild;
 }
-function esc(s) {
+function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function statusBadge(p, t, now) {
+function statusBadge(p, text, now) {
   const open = isOpenAt(p, now);
-  if (open === true) return `<span class="badge badge-open"><span class="dot" aria-hidden="true"></span>${esc(t.openNow)}</span>`;
-  if (open === false) return `<span class="badge badge-closed"><span class="dot" aria-hidden="true"></span>${esc(t.closed)}</span>`;
-  return `<span class="badge badge-unknown">${esc(t.hoursUnknown)}</span>`;
+  if (open === true) return `<span class="badge badge-open"><span class="dot" aria-hidden="true"></span>${escapeHtml(text.openNow)}</span>`;
+  if (open === false) return `<span class="badge badge-closed"><span class="dot" aria-hidden="true"></span>${escapeHtml(text.closed)}</span>`;
+  return `<span class="badge badge-unknown">${escapeHtml(text.hoursUnknown)}</span>`;
 }
 
-function cardHtml(p, t) {
+// Phone block: the number as plain text (not a second link), with an
+// "unverified" badge and note when the number could not be confirmed.
+// The Call button lives in the actions row, not here — one primary
+// Call button only (audit B12).
+function buildPhoneBlock(pharmacy, text, englishAttribute) {
+  const phoneVerified = pharmacy.phoneVerified !== false;
+  if (!pharmacy.phone) return `<p class="phone-line">${escapeHtml(text.phoneNotListed)}</p>`;
+  const unverifiedBadge = phoneVerified ? '' : ` <span class="badge badge-unverified">${escapeHtml(text.phoneUnverified)}</span>`;
+  const unverifiedNote = phoneVerified ? '' : `<p class="unverified-note">${escapeHtml(text.phoneUnverifiedNote)}</p>`;
+  return `<p class="phone-line"><span class="phone-text"${englishAttribute}>${escapeHtml(pharmacy.phoneDisplay)}</span>${unverifiedBadge}</p>${unverifiedNote}`;
+}
+
+// Action buttons: Call (only with a phone), WhatsApp (only when the
+// number is verified as a mobile), directions, and share. Directions
+// use exact coordinates when the pharmacy has them, otherwise a
+// name+address search — never a guessed location.
+function buildCardActions(pharmacy, text) {
+  const tel = pharmacy.phone ? pharmacy.phone.replace(/[\s-]/g, '') : '';
+  const callButton = pharmacy.phone
+    ? `<a class="btn btn-call" href="tel:${escapeHtml(tel)}">${ICON_PHONE}${escapeHtml(text.call)}</a>` : '';
+  const whatsappButton = (pharmacy.whatsapp && pharmacy.whatsappVerified !== false && pharmacy.phone)
+    ? `<a class="btn btn-icon btn-wa" href="https://wa.me/${escapeHtml(pharmacy.phone.replace(/^\+/, '').replace(/[\s-]/g, ''))}" target="_blank" rel="noopener" aria-label="${escapeHtml(text.whatsapp)}" title="${escapeHtml(text.whatsapp)}">${ICON_CHAT}</a>` : '';
+  const directionsHref = (pharmacy.lat != null && pharmacy.lng != null)
+    ? `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.lat},${pharmacy.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pharmacy.name + ', ' + pharmacy.address)}`;
+  const directionsButton = `<a class="btn btn-icon btn-ghost" href="${directionsHref}" target="_blank" rel="noopener" aria-label="${escapeHtml(text.directions)}" title="${escapeHtml(text.directions)}">${ICON_COMPASS}</a>`;
+  const shareButton = `<button class="btn btn-icon btn-ghost" type="button" data-share="${escapeHtml(pharmacy.id)}" aria-label="${escapeHtml(text.share)}" title="${escapeHtml(text.share)}">${ICON_SHARE}</button>`;
+  return `<div class="actions">${callButton}${whatsappButton}${directionsButton}${shareButton}</div>`;
+}
+
+function cardHtml(p, text) {
   const now = nowMinutes();
   const open = isOpenAt(p, now);
   // All data strings (names, addresses, hours, notes, sources) are
   // English; when the page is Bangla, mark them lang="en" so screen
   // readers pronounce them correctly.
   const en = lang === 'bn' ? ' lang="en"' : '';
-  const badge = statusBadge(p, t, now);
-  const late = isLateNight(p) ? `<span class="badge badge-late">${ICON_MOON}${esc(t.lateBadge)}</span>` : '';
+  const badge = statusBadge(p, text, now);
+  const late = isLateNight(p) ? `<span class="badge badge-late">${ICON_MOON}${escapeHtml(text.lateBadge)}</span>` : '';
   const hoursLine = p.hours24
-    ? `<p class="hours-line"><strong>${esc(t.open24)}</strong></p>`
+    ? `<p class="hours-line"><strong>${escapeHtml(text.open24)}</strong></p>`
     : p.hoursText
-      ? `<p class="hours-line"><strong${en}>${esc(p.hoursText)}</strong></p>`
-      : `<p class="hours-line">${esc(t.hoursUnknown)}</p>`;
-  const next = nextLine(p, now, lang, t);
+      ? `<p class="hours-line"><strong${en}>${escapeHtml(p.hoursText)}</strong></p>`
+      : `<p class="hours-line">${escapeHtml(text.hoursUnknown)}</p>`;
+  const next = nextLine(p, now, lang, text);
   const until = minutesUntil(p, now);
   let countdown = '';
   if (until && until.kind === 'closes') {
     const soon = until.mins <= 90;
-    countdown = `<p class="countdown${soon ? ' countdown-soon' : ''}">${esc(soon ? t.closingSoon : t.closesIn(until.mins))}</p>`;
+    countdown = `<p class="countdown${soon ? ' countdown-soon' : ''}">${escapeHtml(soon ? text.closingSoon : text.closesIn(until.mins))}</p>`;
   } else if (until && until.kind === 'opens') {
-    countdown = `<p class="countdown">${esc(t.opensIn(until.mins))}</p>`;
+    countdown = `<p class="countdown">${escapeHtml(text.opensIn(until.mins))}</p>`;
   }
   const dist = distanceTo(p, state.userLoc);
   const distLine = (state.nearest && dist != null)
-    ? `<p class="distance">${esc(formatDistance(dist, lang))}</p>` : '';
-  // Phone: shown as plain text (not a second link). One primary Call
-  // button only. WhatsApp only when the number is verified as a mobile.
-  const phoneVerified = p.phoneVerified !== false;
-  const phoneBlock = p.phone
-    ? `<p class="phone-line"><span class="phone-text"${en}>${esc(p.phoneDisplay)}</span>${phoneVerified ? '' : ` <span class="badge badge-unverified">${esc(t.phoneUnverified)}</span>`}</p>${phoneVerified ? '' : `<p class="unverified-note">${esc(t.phoneUnverifiedNote)}</p>`}`
-    : `<p class="phone-line">${esc(t.phoneNotListed)}</p>`;
-  const tel = p.phone ? p.phone.replace(/[\s-]/g, '') : '';
-  const callBtn = p.phone
-    ? `<a class="btn btn-call" href="tel:${esc(tel)}">${ICON_PHONE}${esc(t.call)}</a>` : '';
-  const waBtn = (p.whatsapp && p.whatsappVerified !== false && p.phone)
-    ? `<a class="btn btn-icon btn-wa" href="https://wa.me/${esc(p.phone.replace(/^\+/, '').replace(/[\s-]/g, ''))}" target="_blank" rel="noopener" aria-label="${esc(t.whatsapp)}" title="${esc(t.whatsapp)}">${ICON_CHAT}</a>` : '';
-  const dirHref = (p.lat != null && p.lng != null)
-    ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ', ' + p.address)}`;
-  const dirBtn = `<a class="btn btn-icon btn-ghost" href="${dirHref}" target="_blank" rel="noopener" aria-label="${esc(t.directions)}" title="${esc(t.directions)}">${ICON_COMPASS}</a>`;
-  const shareBtn = `<button class="btn btn-icon btn-ghost" type="button" data-share="${esc(p.id)}" aria-label="${esc(t.share)}" title="${esc(t.share)}">${ICON_SHARE}</button>`;
+    ? `<p class="distance">${escapeHtml(formatDistance(dist, lang))}</p>` : '';
+  const phoneBlock = buildPhoneBlock(p, text, en);
+  const actions = buildCardActions(p, text);
   const corr = corrections[p.id];
   const corrBadge = corr
-    ? `<p class="correction-badge">${esc(t.correctionReported)}${corr.text ? ` — “${esc(corr.text)}”` : ''}</p>` : '';
-  const notes = p.notes ? `<p class="notes"${en}>${esc(p.notes)}</p>` : '';
-  const tier = p.sourceTier ? `<span class="tier-badge">${esc(sourceTierLabel(p.sourceTier, lang))}</span>` : '';
+    ? `<p class="correction-badge">${escapeHtml(text.correctionReported)}${corr.text ? ` — “${escapeHtml(corr.text)}”` : ''}</p>` : '';
+  const notes = p.notes ? `<p class="notes"${en}>${escapeHtml(p.notes)}</p>` : '';
+  const tier = p.sourceTier ? `<span class="tier-badge">${escapeHtml(sourceTierLabel(p.sourceTier, lang))}</span>` : '';
   return `
-    <li class="card${open === true ? ' card-open' : ''}" data-id="${esc(p.id)}">
+    <li class="card${open === true ? ' card-open' : ''}" data-id="${escapeHtml(p.id)}">
       <div class="card-head">
         <div>
-          <h3${en}>${esc(p.name)}</h3>
-          <p class="area">${esc(areaLabel(p.area, lang))} • <span${en}>${esc(p.chain)}</span></p>
+          <h3${en}>${escapeHtml(p.name)}</h3>
+          <p class="area">${escapeHtml(areaLabel(p.area, lang))} • <span${en}>${escapeHtml(p.chain)}</span></p>
         </div>
         <div class="card-badges">${badge}${late}</div>
       </div>
       ${hoursLine}
-      ${next ? `<p class="next-line">${esc(next)}</p>` : ''}
+      ${next ? `<p class="next-line">${escapeHtml(next)}</p>` : ''}
       ${countdown}
       ${distLine}
-      <p class="address"${en}>${esc(p.address)}</p>
-      <div class="actions">${callBtn}${waBtn}${dirBtn}${shareBtn}</div>
+      <p class="address"${en}>${escapeHtml(p.address)}</p>
+      ${actions}
       ${phoneBlock}
-      <p class="meta-line">${esc(t.confirmStock)}</p>
-      <p class="meta-line">${esc(t.verifiedOn)} ${esc(p.lastVerified)} • <span${en}>${esc(p.source)}</span> ${tier}</p>
+      <p class="meta-line">${escapeHtml(text.confirmStock)}</p>
+      <p class="meta-line">${escapeHtml(text.verifiedOn)} ${escapeHtml(p.lastVerified)} • <span${en}>${escapeHtml(p.source)}</span> ${tier}</p>
       ${notes}
       ${corrBadge}
-      <button class="link-btn" type="button" data-correct="${esc(p.id)}">${esc(t.hoursWrong)}</button>
+      <button class="link-btn" type="button" data-correct="${escapeHtml(p.id)}">${escapeHtml(text.hoursWrong)}</button>
     </li>`;
 }
 
 // Focus bookkeeping: remember where focus was before a re-render so it
 // can be put back on the equivalent element afterwards.
 function captureFocus() {
-  const a = document.activeElement;
-  if (!a || a === document.body) return null;
-  if (a.id) return { byId: a.id, selStart: a.selectionStart, selEnd: a.selectionEnd };
-  const correct = a.getAttribute && a.getAttribute('data-correct');
+  const focusedElement = document.activeElement;
+  if (!focusedElement || focusedElement === document.body) return null;
+  if (focusedElement.id) return { byId: focusedElement.id, selStart: focusedElement.selectionStart, selEnd: focusedElement.selectionEnd };
+  const correct = focusedElement.getAttribute && focusedElement.getAttribute('data-correct');
   if (correct) return { byAttr: 'data-correct', val: correct };
-  const share = a.getAttribute && a.getAttribute('data-share');
+  const share = focusedElement.getAttribute && focusedElement.getAttribute('data-share');
   if (share) return { byAttr: 'data-share', val: share };
   return null;
 }
@@ -514,112 +593,141 @@ function restoreFocus(desc) {
 }
 
 let areaOptionsSig = '';
-function render(opts) {
-  const announce = !!(opts && opts.announce);
-  const focusDesc = captureFocus();
-  const t = I18N[lang];
+// Write every visible label in the current language. This is the only
+// place that touches static page text, so a new language string has one
+// home and a typo shows up in one search.
+function renderPageText(text) {
   document.documentElement.lang = lang;
-  document.getElementById('skipLink').textContent = t.skipLink;
-  document.getElementById('pitch').textContent = t.pitch;
-  document.getElementById('heroTitle').textContent = t.heroTitle;
-  document.getElementById('heroSub').textContent = t.heroSub;
-  document.getElementById('filtersTitle').textContent = t.filtersTitle;
-  document.getElementById('sortLabel').textContent = t.sortLabel;
-  document.getElementById('sortRecommended').textContent = t.sortRecommended;
-  document.getElementById('sortLatest').textContent = t.sortLatest;
-  document.getElementById('sortName').textContent = t.sortName;
-  const sortNearestOpt = document.getElementById('sortNearest');
-  if (sortNearestOpt) sortNearestOpt.textContent = t.sortNearest;
-  document.getElementById('clearFilters').textContent = t.clearFilters;
-  document.getElementById('emptyText').textContent = t.empty;
-  document.getElementById('emptyReset').textContent = t.emptyReset;
-  document.getElementById('nearestBtn').textContent = t.nearestBtn;
-  document.getElementById('stockNote').textContent = t.stockNote;
-  document.getElementById('searchInput').placeholder = t.searchPlaceholder;
-  document.getElementById('areaLabel').textContent = t.area;
-  document.getElementById('aboutTitle').textContent = t.aboutTitle;
-  document.getElementById('aboutText').textContent = t.aboutText;
-  document.getElementById('aboutSources').textContent = t.aboutSources;
-  document.getElementById('footerText').textContent = t.footer;
-  document.getElementById('sheetTitle').textContent = t.sheetTitle;
-  document.getElementById('correctLabel').textContent = t.sheetLabel;
-  document.getElementById('correctInput').placeholder = t.sheetPlaceholder;
-  document.getElementById('cancelCorrect').textContent = t.cancel;
-  document.getElementById('submitCorrect').textContent = t.submit;
-  document.getElementById('sheetNote').textContent = t.sheetNote;
-  document.getElementById('langToggle').textContent = t.langButton;
+  document.getElementById('skipLink').textContent = text.skipLink;
+  document.getElementById('pitch').textContent = text.pitch;
+  document.getElementById('heroTitle').textContent = text.heroTitle;
+  document.getElementById('heroSub').textContent = text.heroSub;
+  document.getElementById('filtersTitle').textContent = text.filtersTitle;
+  document.getElementById('sortLabel').textContent = text.sortLabel;
+  document.getElementById('sortRecommended').textContent = text.sortRecommended;
+  document.getElementById('sortLatest').textContent = text.sortLatest;
+  document.getElementById('sortName').textContent = text.sortName;
+  const sortNearestOption = document.getElementById('sortNearest');
+  if (sortNearestOption) sortNearestOption.textContent = text.sortNearest;
+  document.getElementById('clearFilters').textContent = text.clearFilters;
+  document.getElementById('emptyText').textContent = text.empty;
+  document.getElementById('emptyReset').textContent = text.emptyReset;
+  document.getElementById('nearestBtn').textContent = text.nearestBtn;
+  document.getElementById('stockNote').textContent = text.stockNote;
+  document.getElementById('searchInput').placeholder = text.searchPlaceholder;
+  document.getElementById('areaLabel').textContent = text.area;
+  document.getElementById('aboutTitle').textContent = text.aboutTitle;
+  document.getElementById('aboutText').textContent = text.aboutText;
+  document.getElementById('aboutSources').textContent = text.aboutSources;
+  document.getElementById('footerText').textContent = text.footer;
+  document.getElementById('sheetTitle').textContent = text.sheetTitle;
+  document.getElementById('correctLabel').textContent = text.sheetLabel;
+  document.getElementById('correctInput').placeholder = text.sheetPlaceholder;
+  document.getElementById('cancelCorrect').textContent = text.cancel;
+  document.getElementById('submitCorrect').textContent = text.submit;
+  document.getElementById('sheetNote').textContent = text.sheetNote;
+  document.getElementById('langToggle').textContent = text.langButton;
   document.getElementById('clock').textContent = clockText();
+}
 
+// Refresh the three stat chips and their pressed states so the chips
+// always agree with the active filter.
+function renderStats(text) {
   const now = nowMinutes();
   const openCount = pharmacies.filter(p => isOpenAt(p, now) === true).length;
   const lateCount = pharmacies.filter(isLateNight).length;
-  document.getElementById('statTotal').textContent = num(pharmacies.length, lang);
-  document.getElementById('statTotalLabel').textContent = t.statTotal;
-  document.getElementById('statOpen').textContent = num(openCount, lang);
-  document.getElementById('statOpenLabel').textContent = t.statOpen;
-  document.getElementById('statLate').textContent = num(lateCount, lang);
-  document.getElementById('statLateLabel').textContent = t.statLate;
-
-  // Stat chips reflect the active filter.
+  document.getElementById('statTotal').textContent = formatNumber(pharmacies.length, lang);
+  document.getElementById('statTotalLabel').textContent = text.statTotal;
+  document.getElementById('statOpen').textContent = formatNumber(openCount, lang);
+  document.getElementById('statOpenLabel').textContent = text.statOpen;
+  document.getElementById('statLate').textContent = formatNumber(lateCount, lang);
+  document.getElementById('statLateLabel').textContent = text.statLate;
   document.getElementById('statChipAll').setAttribute('aria-pressed', String(!state.openNow && !state.late));
   document.getElementById('statChipOpen').setAttribute('aria-pressed', String(state.openNow));
   document.getElementById('statChipLate').setAttribute('aria-pressed', String(state.late));
   document.getElementById('nearestBtn').setAttribute('aria-pressed', String(state.nearest));
+}
 
-  // Area options: rebuild only when the set of areas or language changes,
-  // so focus inside the select is never destroyed by a re-render.
+// Rebuild the area <select> options only when the area list or the
+// language changes. Rebuilding on every render would destroy focus
+// inside the select, so the signature string guards it. Returns the
+// sorted area list for the caller.
+function renderAreaOptions(text) {
   const areas = [...new Set(pharmacies.map(p => p.area))].sort();
-  const sig = lang + '|' + areas.join(',');
-  if (sig !== areaOptionsSig) {
-    areaOptionsSig = sig;
-    const areaSel = document.getElementById('areaFilter');
-    areaSel.innerHTML = `<option value="all">${esc(t.allAreas)}</option>` +
-      areas.map(a => `<option value="${esc(a)}">${esc(areaLabel(a, lang))}</option>`).join('');
+  const signature = lang + '|' + areas.join(',');
+  if (signature !== areaOptionsSig) {
+    areaOptionsSig = signature;
+    const areaSelect = document.getElementById('areaFilter');
+    areaSelect.innerHTML = `<option value="all">${escapeHtml(text.allAreas)}</option>` +
+      areas.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(areaLabel(a, lang))}</option>`).join('');
   }
-  const areaSel = document.getElementById('areaFilter');
+  const areaSelect = document.getElementById('areaFilter');
   // Normalise the area from the URL case-insensitively (?area=banani
   // must match the "Banani" option) once the area list is known.
   if (state.area !== 'all') {
     const match = areas.find(a => a.toLowerCase() === String(state.area).toLowerCase());
     if (match) state.area = match;
   }
-  if (areas.includes(state.area)) areaSel.value = state.area;
-  else { areaSel.value = 'all'; state.area = 'all'; }
+  if (areas.includes(state.area)) areaSelect.value = state.area;
+  else { areaSelect.value = 'all'; state.area = 'all'; }
+  return areas;
+}
 
-  // "Nearest" sort option exists only once a location is known.
-  const sortSel = document.getElementById('sortSelect');
+// Keep the sort select and the clear-filters button in sync with state:
+// the "Nearest" sort option exists only once a location is known, and
+// clear-filters is usable only when something is actually filtered.
+function renderFilterControls(text) {
+  const sortSelect = document.getElementById('sortSelect');
   if (state.userLoc && !document.getElementById('sortNearest')) {
-    const opt = document.createElement('option');
-    opt.id = 'sortNearest'; opt.value = 'nearest'; opt.textContent = t.sortNearest;
-    sortSel.appendChild(opt);
+    const option = document.createElement('option');
+    option.id = 'sortNearest'; option.value = 'nearest'; option.textContent = text.sortNearest;
+    sortSelect.appendChild(option);
   }
-  sortSel.value = state.sort;
-
-  // Clear-filters is only usable when something is actually filtered.
+  sortSelect.value = state.sort;
   const hasFilter = state.q !== '' || state.area !== 'all' || state.openNow ||
     state.late || state.sort !== 'recommended' || state.nearest;
-  const clearBtn = document.getElementById('clearFilters');
-  clearBtn.disabled = !hasFilter;
-  clearBtn.classList.toggle('hidden', !hasFilter);
+  const clearButton = document.getElementById('clearFilters');
+  clearButton.disabled = !hasFilter;
+  clearButton.classList.toggle('hidden', !hasFilter);
+}
 
+// Re-render the whole page from state. Each step is its own function
+// above; this one only calls them in order, then restores focus and
+// writes the shareable URL. The result count is an aria-live region, so
+// it is updated ONLY for user actions (search/filter/sort/language),
+// never on the 60-second refresh.
+function render(opts) {
+  const announce = !!(opts && opts.announce);
+  const focusDescription = captureFocus();
+  const text = I18N[lang];
+  renderPageText(text);
+  renderStats(text);
+  renderAreaOptions(text);
+  renderFilterControls(text);
   const list = filteredList(state);
-  renderList(list, t);
-
-  // The result count is an aria-live region: update it ONLY for user
-  // actions (search/filter/sort/language), never on the 60s tick.
+  renderList(list, text, announce);
   if (announce) {
-    document.getElementById('resultCount').textContent = t.results(list.length, pharmacies.length);
+    document.getElementById('resultCount').textContent = text.results(list.length, pharmacies.length);
   }
   document.getElementById('emptyState').classList.toggle('hidden', list.length > 0);
   document.getElementById('loadingState').classList.add('hidden');
-  restoreFocus(focusDesc);
+  restoreFocus(focusDescription);
   syncUrl();
 }
 
 // Keyed list reconciliation: reuse a card node when its generated HTML
 // is unchanged, so focus inside a card survives re-renders.
-function renderList(list, t) {
+// When `animate` is true (a user filter/search action), the list plays a
+// subtle 120ms fade+rise; the CSS disables it under reduced motion.
+function renderList(list, text, animate) {
   const ul = document.getElementById('pharmacyList');
+  if (animate) {
+    ul.classList.remove('list-anim');
+    // Force a reflow so the animation restarts on every filter change.
+    void ul.offsetWidth;
+    ul.classList.add('list-anim');
+    setTimeout(() => ul.classList.remove('list-anim'), 200);
+  }
   // Skeleton cards (no data-id) are one-shot placeholders: drop them.
   Array.from(ul.children).forEach(li => {
     if (!li.dataset || !li.dataset.id) li.remove();
@@ -629,68 +737,75 @@ function renderList(list, t) {
     if (li.dataset && li.dataset.id) existing.set(li.dataset.id, li);
   });
   const seen = new Set();
-  const frag = document.createDocumentFragment();
+  const fragment = document.createDocumentFragment();
   list.forEach(p => {
     seen.add(p.id);
-    const html = cardHtml(p, t);
+    const html = cardHtml(p, text);
     let li = existing.get(p.id);
     if (li && li._html === html) {
       // Reuse: move into place, keep focus and DOM state.
     } else {
-      li = el(html);
+      li = elementFromHtml(html);
       li._html = html;
     }
-    frag.appendChild(li);
+    fragment.appendChild(li);
   });
   existing.forEach((li, id) => { if (!seen.has(id)) li.remove(); });
-  ul.appendChild(frag);
+  ul.appendChild(fragment);
 }
 
-// The 60s tick updates ONLY the clock, the stat numbers, and each
+// Update one visible card's live status in place: open/closed badge,
+// next opening/closing line, and countdown. Replacing the whole card
+// would steal focus, so only these three spots are touched.
+function refreshCardStatus(cardElement, pharmacy, text, now) {
+  const open = isOpenAt(pharmacy, now);
+  cardElement.classList.toggle('card-open', open === true);
+  const badgeSlot = cardElement.querySelector('.card-badges .badge');
+  if (badgeSlot) badgeSlot.outerHTML = statusBadge(pharmacy, text, now);
+  const nextElement = cardElement.querySelector('.next-line');
+  const nextText = nextLine(pharmacy, now, lang, text);
+  if (nextElement) {
+    if (nextText) nextElement.textContent = nextText;
+    else nextElement.remove();
+  } else if (nextText) {
+    const hoursElement = cardElement.querySelector('.hours-line');
+    if (hoursElement) hoursElement.insertAdjacentHTML('afterend', `<p class="next-line">${escapeHtml(nextText)}</p>`);
+  }
+  const until = minutesUntil(pharmacy, now);
+  let countdownElement = cardElement.querySelector('.countdown');
+  let countdownText = '';
+  let soon = false;
+  if (until && until.kind === 'closes') {
+    soon = until.mins <= 90;
+    countdownText = soon ? text.closingSoon : text.closesIn(until.mins);
+  } else if (until && until.kind === 'opens') {
+    countdownText = text.opensIn(until.mins);
+  }
+  if (countdownText) {
+    if (countdownElement) { countdownElement.textContent = countdownText; countdownElement.classList.toggle('countdown-soon', soon); }
+    else {
+      const anchor = cardElement.querySelector('.next-line') || cardElement.querySelector('.hours-line');
+      if (anchor) anchor.insertAdjacentHTML('afterend', `<p class="countdown${soon ? ' countdown-soon' : ''}">${escapeHtml(countdownText)}</p>`);
+    }
+  } else if (countdownElement) countdownElement.remove();
+}
+
+// The 60-second refresh updates ONLY the clock, the stat numbers, and each
 // visible card's status badge / next line / countdown — never the whole
 // list, never the aria-live result count, so focus is never lost.
-function tick() {
-  const t = I18N[lang];
+function refreshOpenStatuses() {
+  const text = I18N[lang];
   document.getElementById('clock').textContent = clockText();
   if (!pharmacies.length) return;
   const now = nowMinutes();
   const openCount = pharmacies.filter(p => isOpenAt(p, now) === true).length;
   const lateCount = pharmacies.filter(isLateNight).length;
-  document.getElementById('statOpen').textContent = num(openCount, lang);
-  document.getElementById('statLate').textContent = num(lateCount, lang);
-  document.querySelectorAll('#pharmacyList .card').forEach(li => {
-    const p = pharmacies.find(x => x.id === li.dataset.id);
-    if (!p) return;
-    const open = isOpenAt(p, now);
-    li.classList.toggle('card-open', open === true);
-    const badgeSlot = li.querySelector('.card-badges .badge');
-    if (badgeSlot) badgeSlot.outerHTML = statusBadge(p, t, now);
-    const nextEl = li.querySelector('.next-line');
-    const nextText = nextLine(p, now, lang, t);
-    if (nextEl) {
-      if (nextText) nextEl.textContent = nextText;
-      else nextEl.remove();
-    } else if (nextText) {
-      const hoursEl = li.querySelector('.hours-line');
-      if (hoursEl) hoursEl.insertAdjacentHTML('afterend', `<p class="next-line">${esc(nextText)}</p>`);
-    }
-    const until = minutesUntil(p, now);
-    let cdEl = li.querySelector('.countdown');
-    let cdText = '';
-    let soon = false;
-    if (until && until.kind === 'closes') {
-      soon = until.mins <= 90;
-      cdText = soon ? t.closingSoon : t.closesIn(until.mins);
-    } else if (until && until.kind === 'opens') {
-      cdText = t.opensIn(until.mins);
-    }
-    if (cdText) {
-      if (cdEl) { cdEl.textContent = cdText; cdEl.classList.toggle('countdown-soon', soon); }
-      else {
-        const anchor = li.querySelector('.next-line') || li.querySelector('.hours-line');
-        if (anchor) anchor.insertAdjacentHTML('afterend', `<p class="countdown${soon ? ' countdown-soon' : ''}">${esc(cdText)}</p>`);
-      }
-    } else if (cdEl) cdEl.remove();
+  document.getElementById('statOpen').textContent = formatNumber(openCount, lang);
+  document.getElementById('statLate').textContent = formatNumber(lateCount, lang);
+  document.querySelectorAll('#pharmacyList .card').forEach(cardElement => {
+    const pharmacy = pharmacies.find(x => x.id === cardElement.dataset.id);
+    if (!pharmacy) return;
+    refreshCardStatus(cardElement, pharmacy, text, now);
   });
 }
 
@@ -733,14 +848,14 @@ function copyText(text) {
     return navigator.clipboard.writeText(text);
   }
   return new Promise((resolve, reject) => {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed'; textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
     try { document.execCommand('copy'); resolve(); }
     catch (e) { reject(e); }
-    document.body.removeChild(ta);
+    document.body.removeChild(textArea);
   });
 }
 function sharePharmacy(p) {
@@ -842,7 +957,7 @@ function showSkeleton() {
   const ul = document.getElementById('pharmacyList');
   ul.innerHTML = '';
   for (let i = 0; i < 3; i++) {
-    ul.appendChild(el('<li class="card skeleton" aria-hidden="true"><div class="sk-line sk-title"></div><div class="sk-line sk-sub"></div><div class="sk-line sk-btn"></div></li>'));
+    ul.appendChild(elementFromHtml('<li class="card skeleton" aria-hidden="true"><div class="sk-line sk-title"></div><div class="sk-line sk-sub"></div><div class="sk-line sk-btn"></div></li>'));
   }
   document.getElementById('loadingState').classList.remove('hidden');
   document.getElementById('errorState').classList.add('hidden');
@@ -931,6 +1046,23 @@ function init() {
     render({ announce: true });
   });
   document.getElementById('pharmacyList').addEventListener('click', e => {
+    // Tapping Call shows brief "Dialing…" feedback + a light haptic.
+    // WHY an overlay class, not a label swap: replacing the button's
+    // text changes its width, the actions row can wrap, the card grows
+    // taller, and the next tap can land on the wrong button. The
+    // overlay (see .btn-call.is-dialing in styles.css) covers the
+    // button without moving anything on the page.
+    const callBtn = e.target.closest('.btn-call');
+    if (callBtn && !callBtn.classList.contains('is-dialing')) {
+      callBtn.classList.add('is-dialing');
+      callBtn.setAttribute('data-dialing-text', I18N[lang].dialing);
+      callBtn.setAttribute('aria-busy', 'true');
+      if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) { /* unsupported */ } }
+      setTimeout(() => {
+        callBtn.classList.remove('is-dialing');
+        callBtn.removeAttribute('aria-busy');
+      }, 900);
+    }
     const correctBtn = e.target.closest('[data-correct]');
     if (correctBtn) { openSheet(correctBtn.getAttribute('data-correct'), correctBtn); return; }
     const shareBtn = e.target.closest('[data-share]');
@@ -943,17 +1075,17 @@ function init() {
   document.getElementById('sheetBackdrop').addEventListener('click', closeSheet);
   document.getElementById('submitCorrect').addEventListener('click', () => {
     if (!correctingId) return;
-    const text = document.getElementById('correctInput').value.trim();
+    const correctionText = document.getElementById('correctInput').value.trim();
     const p = pharmacies.find(x => x.id === correctingId);
-    saveCorrection(correctingId, text);
+    saveCorrection(correctingId, correctionText);
     closeSheet();
     render({ announce: true });
     // Honest toast: saved only in this browser + a real way to tell the team.
-    const t = I18N[lang];
-    showToast(`${esc(t.toastSaved)} <a href="${tellTeamLink(p, text)}">${esc(t.tellTeam)} →</a>`, 8000);
+    const text = I18N[lang];
+    showToast(`${escapeHtml(text.toastSaved)} <a href="${tellTeamLink(p, correctionText)}">${escapeHtml(text.tellTeam)} →</a>`, 8000);
   });
   // Clock + open-now status refresh every minute — badges/countdowns only.
-  setInterval(tick, 60000);
+  setInterval(refreshOpenStatuses, 60000);
 
   // Offline support: register the service worker only if it loads.
   if ('serviceWorker' in navigator) {
@@ -972,5 +1104,5 @@ if (typeof document !== 'undefined') {
 }
 // Export pure helpers for Node testing.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { toMinutes, isOpenAt, isLateNight, formatTime, minutesUntil, effectiveClose, formatDuration, haversineKm, bnDayPart };
+  module.exports = { toMinutes, isOpenAt, isLateNight, formatTime, minutesUntil, effectiveClose, formatDuration, haversineKm, bnDayPart, hoursForDay, inBreak };
 }

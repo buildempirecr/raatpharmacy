@@ -16,4 +16,4 @@ kicker/eyebrow, no one-sided border bar on cards, touch targets ≥44px,
 header stacks on phones (the clock pill never covers the brand),
 reduced-motion respected, focus rings + themed selection/scrollbars.
 
-Data: `data/pharmacies.json` — 41 verified pharmacies, never edited here.
+Data: `data/pharmacies.json` — 94 verified pharmacies (41 original + 53 added 26 Nov 2026), never edited here.
