@@ -77,6 +77,15 @@ Most pharmacies keep the same hours every day. Where a source actually states di
 - Canonical URL, Open Graph tags and a Twitter `summary_large_image` card in `index.html`; `og.png` (1200×630, drawn with Python/PIL from the brand — deep emerald + mint, moon mark, no stock photos, no invented claims).
 - JSON-LD `ItemList` in `index.html` — one `Pharmacy` item per entry, with `telephone` only where `phoneVerified` is true and `openingHoursSpecification` only where hours are verified. **If the data changes, regenerate this block too.**
 
+## Blog / guides (SEO)
+
+The site carries its own guides at `/blog/` so Google can find it without any social-media posting. The blog index (`blog/index.html`) lists all guides; the finder links to it from the header ("গাইড"), the About section and the footer.
+
+- **6 articles, all in Bangla** (26 Nov 2026): how to find a night pharmacy in Dhaka (pillar page), Gulshan–Banani, Dhanmondi–Mohammadpur, Mirpur–Uttara, what to do when emergency medicine is needed at night, and how to tell whether a pharmacy is open. Each article is 615–729 words of prose plus a pharmacy list rendered from the data.
+- **Built, not hand-typed:** `blog/build_blog.py` reads `data/pharmacies.json` and renders every article, including each pharmacy list — so no phone, address or hours in an article can ever disagree with the finder. Re-run it after any data change: `python3 blog/build_blog.py`. It also regenerates `sitemap.xml` and `robots.txt`.
+- **Per-article SEO:** unique title (≤60 chars) and description (≤155 chars), canonical URL, Open Graph + Twitter tags (reusing `og.png`), JSON-LD `Article` + `BreadcrumbList`, one `h1`, `lang="bn"`. Each article ends with a CTA back to the finder (with the right `?area=` / `?open=` query) and links to 2–3 other articles.
+- **Honesty rules, same as the finder:** an entry with no verified hours is shown as "সময় নিশ্চিত নয়", an unverified phone is labelled "অযাচাইকৃত", and an entry with no phone shows no phone. Friday closures and the 2–4 PM break are stated where the data says so; nothing is guessed.
+
 ## Project structure
 
 ```
@@ -91,14 +100,28 @@ raatpharmacy/
 ├── vercel.json           # Static hosting config (clean URLs)
 ├── data/
 │   └── pharmacies.json   # 94 verified pharmacies + sources + verification note
+├── blog/
+│   ├── build_blog.py     # Generates all blog pages + sitemap + robots from pharmacies.json
+│   ├── blog.css          # Article typography (reuses styles.css for the rest)
+│   ├── index.html        # Guide list (generated — do not edit by hand)
+│   └── *.html            # 6 articles (generated — do not edit by hand)
+├── sitemap.xml           # Homepage + blog index + 6 articles (generated)
+├── robots.txt            # Allow all + sitemap (generated)
 ├── new-pharmacies.json   # Research output: the 53 entries added 26 Nov 2026
 ├── coordinates.json      # Research output: the 21 confident geocoding matches
 └── README.md
 ```
 
+## How to add a new article
+
+1. In `blog/build_blog.py`, add a new `body()` function (Bangla prose, 600–900 words) and an entry in `ARTICLES` with `slug`, `title` (≤60 chars), `description` (≤155 chars), `h1`, `lede`, `teaser`, `cta_href` (finder link with query params) and `cta_text`.
+2. Add the slug to `RELATED` (2–3 other articles) and to the other articles' related lists where it fits.
+3. Add the slug to the `ASSETS` list in `sw.js` and bump the cache name (`raatpharmacy-v4` → `v5`).
+4. Run `python3 blog/build_blog.py` and check the printed word counts and the verification script before pushing.
+
 ## Code style (readable code)
 
-This project is judged partly on readable code, so every line is written for a reader years from now: clear descriptive names (no cryptic abbreviations), short functions that do one thing, a short comment above each section explaining **why** it exists (not just what it does), consistent formatting, no clever one-liners, no dead code. If shorter and clearer conflict, clearer wins. The service worker cache name (`raatpharmacy-v2` in `sw.js`) must be bumped on every release that changes a cached file, or visitors keep seeing the old version.
+This project is judged partly on readable code, so every line is written for a reader years from now: clear descriptive names (no cryptic abbreviations), short functions that do one thing, a short comment above each section explaining **why** it exists (not just what it does), consistent formatting, no clever one-liners, no dead code. If shorter and clearer conflict, clearer wins. The service worker cache name (`raatpharmacy-v4` in `sw.js`) must be bumped on every release that changes a cached file, or visitors keep seeing the old version.
 
 ## Tech
 
