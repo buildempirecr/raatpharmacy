@@ -28,7 +28,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="blog.css">
-</head>
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -53,6 +52,7 @@
 {"@type": "ListItem", "position": 3, "name": "ধানমন্ডি ও মোহাম্মদপুরে রাতের ফার্মেসি", "item": "https://buildempirecr.github.io/raatpharmacy/blog/dhanmondi-night-pharmacy.html"}]
 }
   </script>
+</head>
 <body>
   <a class="skip-link" href="#main">মূল বিষয়বস্তুতে যান</a>
   <header class="topbar">
@@ -66,10 +66,13 @@
           <p>রাতে খোলা ফার্মেসি খুঁজুন — সময়, ফোন, দিকনির্দেশনা এক ট্যাপে।</p>
         </div>
       </div>
-      <nav class="blog-nav" aria-label="প্রধান মেনু">
-        <a href="../">ফাইন্ডার</a>
-        <a href="./" class="blog-nav-active">গাইড</a>
-      </nav>
+      <div class="top-right">
+        <span class="clock" id="blogClock" role="timer" aria-live="off">—</span>
+        <nav class="blog-nav" aria-label="প্রধান মেনু">
+          <a href="../">ফাইন্ডার</a>
+          <a href="./" class="blog-nav-active" aria-current="page">গাইড</a>
+        </nav>
+      </div>
     </div>
   </header>
   <main id="main" tabindex="-1" class="blog-main">
@@ -198,5 +201,33 @@
     <p>RaatPharmacy — Arohon Build for Bangladesh। জরুরি অবস্থায় ৯৯৯-এ কল করুন।</p>
     <p class="footer-links"><a href="../">ফার্মেসি খুঁজুন</a> · <a href="./">সব গাইড</a> · <a href="https://github.com/buildempirecr/raatpharmacy">GitHub</a></p>
   </footer>
+  <script>
+  // Live Dhaka clock in the blog header (same time as the finder).
+  // WHY inline here: blog pages have no JS bundle; this is 20 lines.
+  // Bangla day-part words, like the finder ("১১:৩০ রাত"), never AM/PM.
+  (function () {
+    var el = document.getElementById('blogClock');
+    if (!el) return;
+    var BN = '০১২৩৪৫৬৭৮৯';
+    var digits = function (s) { return String(s).replace(/[0-9]/g, function (d) { return BN[Number(d)]; }); };
+    var part = function (h) {
+      if (h >= 4 && h < 6) return 'ভোর';
+      if (h >= 6 && h < 12) return 'সকাল';
+      if (h >= 12 && h < 16) return 'দুপুর';
+      if (h >= 16 && h < 18) return 'বিকাল';
+      if (h >= 18 && h < 20) return 'সন্ধ্যা';
+      return 'রাত';
+    };
+    var tick = function () {
+      var d = new Date();
+      var h = d.getHours();
+      var h12 = h % 12 === 0 ? 12 : h % 12;
+      var mm = String(d.getMinutes()).padStart(2, '0');
+      el.textContent = digits(h12) + ':' + digits(mm) + ' ' + part(h) + ' • ঢাকা';
+    };
+    tick();
+    setInterval(tick, 60000);
+  })();
+  </script>
 </body>
 </html>

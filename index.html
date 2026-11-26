@@ -259,7 +259,7 @@
             "Sunday"
           ],
           "opens": "08:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -375,7 +375,7 @@
             "Sunday"
           ],
           "opens": "08:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -404,7 +404,7 @@
             "Sunday"
           ],
           "opens": "08:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -433,7 +433,7 @@
             "Sunday"
           ],
           "opens": "08:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -491,7 +491,7 @@
             "Sunday"
           ],
           "opens": "07:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -520,7 +520,7 @@
             "Sunday"
           ],
           "opens": "08:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -549,7 +549,7 @@
             "Sunday"
           ],
           "opens": "07:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -578,7 +578,7 @@
             "Sunday"
           ],
           "opens": "07:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -607,7 +607,7 @@
             "Sunday"
           ],
           "opens": "08:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -636,7 +636,7 @@
             "Sunday"
           ],
           "opens": "08:00",
-          "closes": "23:59"
+          "closes": "00:00"
         }
       }
     },
@@ -2214,7 +2214,35 @@
           "streetAddress": "Azambag, Chalbon, Uttara, Dhaka-1230",
           "addressLocality": "Dhaka",
           "addressCountry": "BD"
-        }
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Saturday",
+              "Sunday"
+            ],
+            "opens": "09:00",
+            "closes": "14:00"
+          },
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Saturday",
+              "Sunday"
+            ],
+            "opens": "16:00",
+            "closes": "00:00"
+          }
+        ]
       }
     },
     {
@@ -2309,7 +2337,7 @@
   <main id="main" tabindex="-1">
     <noscript>
       <div class="noscript-note">
-        <p><strong>জাভাস্ক্রিপ্ট ছাড়া এই তালিকা দেখা যাবে না।</strong> জরুরি অবস্থায় ৯৯৯-এ কল করুন। নিচে ২৪ ঘণ্টা খোলা ফার্মেসিগুলোর নাম ও ফোন দেওয়া আছে (২৫ নভেম্বর ২০২৬-এর যাচাই করা তথ্য):</p>
+        <p><strong>জাভাস্ক্রিপ্ট ছাড়া এই তালিকা দেখা যাবে না।</strong> জরুরি অবস্থায় ৯৯৯-এ কল করুন। নিচে ২৪ ঘণ্টা খোলা ফার্মেসিগুলোর নাম ও ফোন দেওয়া আছে (২৬ নভেম্বর ২০২৬-এর যাচাই করা তথ্য):</p>
         <ul>
           <li>Lazz Pharma — Russel Square — 02-9117839</li>
           <li>Lazz Pharma — Banasree — 01842 093 701</li>
@@ -2321,6 +2349,10 @@
           <li>Evercare Hospital Pharmacy — 10678 (hotline)</li>
           <li>United Hospital Pharmacy — 02-8866000</li>
           <li>24 Hour Pharmacy — Dhanmondi — 02-9673512</li>
+          <li>Labaid Specialized Hospital Pharmacy — Dhanmondi — 10606 (hotline)</li>
+          <li>Dhaka Central Model Pharmacy — Shyamoli — 09610 910 651</li>
+          <li>MH Samorita Hospital Pharmacy — Tejgaon — 02-8878080</li>
+          <li>Holy Family Hospital Pharmacy — Eskaton — ফোন নম্বর তালিকায় নেই</li>
         </ul>
       </div>
     </noscript>
@@ -2368,12 +2400,13 @@
             </select>
           </label>
           <button id="nearestBtn" class="btn btn-ghost nearest-btn" type="button" aria-pressed="false">সবচেয়ে কাছে</button>
+          <p class="nearest-note" id="nearestNote"></p>
           <button id="clearFilters" class="btn btn-ghost clear-btn" type="button">ফিল্টার মুছে ফেলুন</button>
         </section>
 
         <section class="about">
           <h2 id="aboutTitle">তথ্য যাচাই নিয়ে</h2>
-          <p id="aboutText">সব ফোন নম্বর, ঠিকানা ও সময় প্রকাশিত উৎস থেকে যাচাই করা — ২৫ নভেম্বর ২০২৬। কোনো নম্বর বা সময় বানানো হয়নি। যেখানে যাচাই করা যায়নি, সেখানে “নিশ্চিত নয়” লেখা আছে। সময় বদলাতে পারে, তাই যাওয়ার আগে ফোন করে নিন।</p>
+          <p id="aboutText">সব ফোন নম্বর, ঠিকানা ও সময় প্রকাশিত উৎস থেকে যাচাই করা — ২৬ নভেম্বর ২০২৬। কোনো নম্বর বা সময় বানানো হয়নি। যেখানে যাচাই করা যায়নি, সেখানে “নিশ্চিত নয়” লেখা আছে। সময় বদলাতে পারে, তাই যাওয়ার আগে ফোন করে নিন।</p>
           <p id="aboutSources" class="sources">উৎস: Islamia Pharmacy (অফিসিয়াল সাইট), Lazz Pharma, Tamanna Pharmacy, হাসপাতাল ফার্মেসি, প্রকাশিত ডিরেক্টরি। পুরো তালিকা ও উৎস GitHub রিপোতে আছে। <a href="blog/">রাতের ফার্মেসি গাইড পড়ুন →</a></p>
         </section>
       </aside>
@@ -2384,6 +2417,7 @@
         <ul id="pharmacyList" class="pharmacy-list"></ul>
         <div id="emptyState" class="empty hidden">
           <p id="emptyText">কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।</p>
+          <p id="emptySuggest" class="empty-suggest hidden"><button id="emptySuggestBtn" class="btn btn-ghost" type="button"></button></p>
           <button id="emptyReset" class="btn btn-primary" type="button">সব ফিল্টার মুছুন</button>
         </div>
         <div id="errorState" class="empty hidden" role="alert">
@@ -2397,7 +2431,7 @@
 
   <footer>
     <p id="footerText">RaatPharmacy — Arohon Build for Bangladesh। জরুরি অবস্থায় ৯৯৯-এ কল করুন।</p>
-    <p class="footer-links"><a href="blog/">রাতের ফার্মেসি গাইড</a></p>
+    <p class="footer-links"><a href="./">ফার্মেসি খুঁজুন</a> · <a href="blog/">সব গাইড</a> · <a href="https://github.com/buildempirecr/raatpharmacy">GitHub</a></p>
   </footer>
 
   <!-- Correction form: one shared panel, opened per pharmacy -->

@@ -53,7 +53,6 @@ function isOpenAt(p, nowMin, date) {
   if (close === 0) return nowMin >= open; // closes at midnight
   return nowMin >= open || nowMin < close; // overnight, e.g. 08:00-01:30
 }
-
 // "Open past midnight" for the late-night filter: 24h, or closes after
 // midnight (00:30 / 01:00 / 01:30 / 03:00), or opens at midnight.
 function isLateNight(p) {
@@ -218,6 +217,7 @@ const I18N = {
     sortNearest: 'সবচেয়ে কাছে প্রথমে',
     clearFilters: 'ফিল্টার মুছে ফেলুন',
     nearestBtn: 'সবচেয়ে কাছে',
+    nearestNote: 'কাছের ফার্মেসি দেখতে আপনার অবস্থান লাগবে — লোকেশন শুধু সাজানোর কাজে ব্যবহৃত হয়, কোথাও পাঠানো বা সংরক্ষণ করা হয় না।',
     nearestOn: 'সবচেয়ে কাছে সাজানো হচ্ছে',
     nearestDenied: 'অবস্থান পাওয়া যায়নি — লোকেশন অনুমতি দিলে কাছের ফার্মেসি দেখাবে।',
     nearestUnsupported: 'এই ব্রাউজারে লোকেশন কাজ করে না।',
@@ -225,6 +225,7 @@ const I18N = {
     statTotal: 'ফার্মেসি', statOpen: 'এখন খোলা', statLate: 'রাত ১২টার পরেও খোলা',
     stockNote: 'স্টকের তথ্য লাইভ নয় — যাওয়ার আগে ফোন করে ওষুধ আছে কিনা জেনে নিন।',
     searchPlaceholder: 'ফার্মেসি, এলাকা বা ঠিকানা লিখুন…',
+    searchLabel: 'খুঁজুন',
     area: 'এলাকা', allAreas: 'সব এলাকা',
     openNow: 'এখন খোলা', closed: 'বন্ধ', hoursUnknown: 'সময় নিশ্চিত নয়',
     open24: 'সারারাত খোলা — ২৪ ঘণ্টা',
@@ -246,11 +247,13 @@ const I18N = {
     correctionReported: 'সংশোধন জানানো হয়েছে — যাচাই হয়নি',
     results: (n, total) => `${formatNumber(total, 'bn')}টির মধ্যে ${formatNumber(n, 'bn')}টি দেখাচ্ছে`,
     empty: 'কোনো ফার্মেসি মেলেনি — খোঁজ বা ফিল্টার বদলে দেখুন।',
+    emptySuggest: area => `আপনি কি “${area}” খুঁজছিলেন?`,
     emptyReset: 'সব ফিল্টার মুছুন',
     loading: 'তালিকা লোড হচ্ছে…',
     loadError: 'তালিকা আনা যায়নি — নেটওয়ার্ক দেখে আবার চেষ্টা করুন।',
     retry: 'আবার চেষ্টা করুন',
     offlineNote: savedAt => `আপনি অফলাইনে আছেন — সর্বশেষ সেভ করা তালিকা দেখাচ্ছেন (${savedAt})।`,
+    offlineNoteNoDate: 'আপনি অফলাইনে আছেন — সর্বশেষ সেভ করা তালিকা দেখাচ্ছেন।',
     aboutTitle: 'তথ্য যাচাই নিয়ে',
     aboutText: 'সব ফোন নম্বর, ঠিকানা ও সময় প্রকাশিত উৎস থেকে যাচাই করা — ২৬ নভেম্বর ২০২৬। কোনো নম্বর বা সময় বানানো হয়নি। যেখানে যাচাই করা যায়নি, সেখানে “নিশ্চিত নয়” লেখা আছে। সময় বদলাতে পারে, তাই যাওয়ার আগে ফোন করে নিন।',
     aboutSources: 'উৎস: Islamia Pharmacy (অফিসিয়াল সাইট), Lazz Pharma (অফিসিয়াল সাইট), Popular Medicine Corner, IBN SINA, Tamanna Pharmacy, হাসপাতাল ফার্মেসি, প্রকাশিত ডিরেক্টরি। পুরো তালিকা ও উৎস GitHub রিপোতে আছে।',
@@ -278,6 +281,7 @@ const I18N = {
     sortNearest: 'Nearest first',
     clearFilters: 'Clear filters',
     nearestBtn: 'Nearest',
+    nearestNote: 'To show the closest pharmacies first, your location is needed — it is used only for sorting, never sent or stored anywhere.',
     nearestOn: 'Sorted by nearest',
     nearestDenied: 'Location not available — allow location access to see the nearest pharmacies.',
     nearestUnsupported: 'Location is not supported in this browser.',
@@ -285,6 +289,7 @@ const I18N = {
     statTotal: 'pharmacies', statOpen: 'open now', statLate: 'open past midnight',
     stockNote: 'Stock is not live — call ahead to confirm the medicine is in stock.',
     searchPlaceholder: 'Search pharmacy, area or address…',
+    searchLabel: 'Search',
     area: 'Area', allAreas: 'All areas',
     openNow: 'Open now', closed: 'Closed', hoursUnknown: 'Hours not confirmed',
     open24: 'Open all night — 24 hours',
@@ -306,11 +311,13 @@ const I18N = {
     correctionReported: 'Correction reported — not yet verified',
     results: (n, total) => `Showing ${n} of ${total}`,
     empty: 'No pharmacy matched — try a different search or filter.',
+    emptySuggest: area => `Did you mean “${area}”?`,
     emptyReset: 'Clear all filters',
     loading: 'Loading list…',
     loadError: 'Could not load the list — check your network and try again.',
     retry: 'Try again',
     offlineNote: savedAt => `You are offline — showing the last saved list (${savedAt}).`,
+    offlineNoteNoDate: 'You are offline — showing the last saved list.',
     aboutTitle: 'About the data',
     aboutText: 'Every phone number, address and opening-hours value was verified from a published source — 26 Nov 2026. Nothing was invented. Where it could not be verified, it says “not confirmed”. Hours can change, so call ahead before going.',
     aboutSources: 'Sources: Islamia Pharmacy (official site), Lazz Pharma (official site), Popular Medicine Corner, IBN SINA, Tamanna Pharmacy, hospital pharmacies, published directories. The full list and sources are in the GitHub repo.',
@@ -334,7 +341,7 @@ const AREA_BN = {
   Kakrail: 'কাকরাইল', Shyamoli: 'শ্যামলী', Kalabagan: 'কলাবাগান', Pallabi: 'পল্লবী',
   Jatrabari: 'যাত্রাবাড়ী', Lalbagh: 'লালবাগ', Moghbazar: 'মগবাজার', Bashabo: 'বাসাবো',
   Malibagh: 'মালিবাগ',
-  Aftabnagar: 'আফতাবনগর', Agargaon: 'আগারগাঁও', Badda: 'বাড্ডা', Bosila: 'বসিলা',
+  Banasree: 'বনশ্রী',
   Cantonment: 'ক্যান্টনমেন্ট', Dakshinkhan: 'দক্ষিণখান', Demra: 'ডেমরা',
   'Elephant Road': 'এলিফ্যান্ট রোড', 'English Road': 'ইংলিশ রোড', Farmgate: 'ফার্মগেট',
   Gandaria: 'গেন্ডারিয়া', 'Green Road': 'গ্রিন রোড', Kallyanpur: 'কল্যাণপুর',
@@ -377,20 +384,39 @@ function nowMinutes() {
 }
 function clockText() {
   const d = new Date();
-  let h = d.getHours();
-  const ampm = h < 12 ? 'AM' : 'PM';
+  const h = d.getHours();
   const h12 = h % 12 === 0 ? 12 : h % 12;
   const mm = String(d.getMinutes()).padStart(2, '0');
-  const time = `${h12}:${mm} ${ampm}`;
-  return lang === 'bn' ? `${bnDigits(time)} • ঢাকা` : `${time} • Dhaka`;
+  // Bangla mode uses the same day-part words as the hours on the cards
+  // ("১১:৩০ রাত"), never AM/PM — the old version showed "১১:৩০ PM".
+  if (lang === 'bn') return `${bnDigits(h12)}:${bnDigits(mm)} ${bnDayPart(h)} • ঢাকা`;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return `${h12}:${mm} ${ampm} • Dhaka`;
 }
 
 // ---------- filtering / sorting ----------
 function matchesQuery(p, q) {
   if (!q) return true;
+  const query = q.toLowerCase();
+  // Phone numbers are searchable too: compare digits only, so
+  // "01677 602 723", "01677602723" and "+8801677602723" all match the
+  // same pharmacy, and the 5-digit hotlines (10616…) match as well.
+  // Short digit strings (<5) are not treated as phone searches, so a
+  // postcode fragment in an address search cannot false-match.
+  const queryDigits = query.replace(/\D/g, '');
+  if (queryDigits.length >= 5) {
+    const norm = d => d.replace(/^880/, '0'); // +8801… and 01… are the same number
+    const nq = norm(queryDigits);
+    for (const field of [p.phone, p.phoneDisplay]) {
+      const digits = (field || '').replace(/\D/g, '');
+      if (!digits) continue;
+      const nd = norm(digits);
+      if (nd.includes(nq) || nq.includes(nd)) return true;
+    }
+  }
   // Include the Bangla area name so Bangla search terms match too.
   const hay = `${p.name} ${p.chain} ${p.area} ${areaLabel(p.area, 'bn')} ${p.address}`.toLowerCase();
-  return hay.includes(q.toLowerCase());
+  return hay.includes(query);
 }
 function distanceTo(p, loc) {
   if (!loc || p.lat == null || p.lng == null) return null;
@@ -455,6 +481,15 @@ function readUrlState() {
   if (params.get('late') === '1') state.late = true;
   const sort = params.get('sort');
   if (sort === 'name' || sort === 'latest') state.sort = sort;
+  // A shared ?sort=nearest link asks for nearest-first sorting. The
+  // location itself is only known after the visitor allows it, so the
+  // actual permission request happens once, after the data loads
+  // (see loadData) — never silently, and with a fallback if denied.
+  if (sort === 'nearest') {
+    state.sort = 'nearest';
+    state.nearest = true;
+    nearestFromUrl = true;
+  }
 }
 
 // ---------- rendering ----------
@@ -488,7 +523,10 @@ function buildPhoneBlock(pharmacy, text, englishAttribute) {
   const phoneVerified = pharmacy.phoneVerified !== false;
   if (!pharmacy.phone) return `<p class="phone-line">${escapeHtml(text.phoneNotListed)}</p>`;
   const unverifiedBadge = phoneVerified ? '' : ` <span class="badge badge-unverified">${escapeHtml(text.phoneUnverified)}</span>`;
-  const unverifiedNote = phoneVerified ? '' : `<p class="unverified-note">${escapeHtml(text.phoneUnverifiedNote)}</p>`;
+  // The data can explain WHY a number is unverified (e.g. Care Banani's
+  // number contains a sequential run) — show that reason instead of
+  // leaving the visitor to guess. It is English data, hence lang="en".
+  const unverifiedNote = phoneVerified ? '' : `<p class="unverified-note">${escapeHtml(text.phoneUnverifiedNote)}${pharmacy.phoneNote ? ` <span${englishAttribute}>${escapeHtml(pharmacy.phoneNote)}</span>` : ''}</p>`;
   return `<p class="phone-line"><span class="phone-text"${englishAttribute}>${escapeHtml(pharmacy.phoneDisplay)}</span>${unverifiedBadge}</p>${unverifiedNote}`;
 }
 
@@ -613,8 +651,10 @@ function renderPageText(text) {
   document.getElementById('emptyText').textContent = text.empty;
   document.getElementById('emptyReset').textContent = text.emptyReset;
   document.getElementById('nearestBtn').textContent = text.nearestBtn;
+  document.getElementById('nearestNote').textContent = text.nearestNote;
   document.getElementById('stockNote').textContent = text.stockNote;
   document.getElementById('searchInput').placeholder = text.searchPlaceholder;
+  document.getElementById('searchLabel').textContent = text.searchLabel;
   document.getElementById('areaLabel').textContent = text.area;
   document.getElementById('aboutTitle').textContent = text.aboutTitle;
   document.getElementById('aboutText').textContent = text.aboutText;
@@ -691,6 +731,45 @@ function renderFilterControls(text) {
   clearButton.classList.toggle('hidden', !hasFilter);
 }
 
+// Levenshtein distance (small strings only: area names). Used to
+// suggest the closest area when a search finds nothing.
+function levenshtein(a, b) {
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j];
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diag = tmp;
+    }
+  }
+  return prev[b.length];
+}
+
+// Closest area to a failed search query, or null. Matches on the English
+// name and the Bangla label, so "gulsan", "গুলসান" and "bananai" all
+// suggest the right area instead of a dead end. A substring match wins
+// outright; otherwise the closest spelling within a small distance.
+function suggestAreaFor(query) {
+  const q = query.trim().toLowerCase();
+  if (q.length < 3) return null;
+  const areas = [...new Set(pharmacies.map(p => p.area))];
+  let best = null;
+  let bestDist = Infinity;
+  for (const area of areas) {
+    if (area === state.area) continue; // never suggest the filter already on
+    const labels = [area.toLowerCase(), areaLabel(area, 'bn').toLowerCase()];
+    for (const label of labels) {
+      if (label.includes(q) || q.includes(label)) return area;
+      const dist = levenshtein(q, label);
+      const limit = label.length <= 6 ? 2 : 3;
+      if (dist <= limit && dist < bestDist) { best = area; bestDist = dist; }
+    }
+  }
+  return best;
+}
+
 // Re-render the whole page from state. Each step is its own function
 // above; this one only calls them in order, then restores focus and
 // writes the shareable URL. The result count is an aria-live region, so
@@ -710,6 +789,17 @@ function render(opts) {
     document.getElementById('resultCount').textContent = text.results(list.length, pharmacies.length);
   }
   document.getElementById('emptyState').classList.toggle('hidden', list.length > 0);
+  // Empty search: suggest the closest matching area instead of a dead
+  // end. The button applies that area and clears the search text.
+  const suggestBox = document.getElementById('emptySuggest');
+  const suggestion = list.length === 0 && state.q ? suggestAreaFor(state.q) : null;
+  if (suggestion) {
+    document.getElementById('emptySuggestBtn').textContent = text.emptySuggest(areaLabel(suggestion, lang));
+    document.getElementById('emptySuggestBtn').dataset.area = suggestion;
+    suggestBox.classList.remove('hidden');
+  } else {
+    suggestBox.classList.add('hidden');
+  }
   document.getElementById('loadingState').classList.add('hidden');
   restoreFocus(focusDescription);
   syncUrl();
@@ -734,7 +824,12 @@ function renderList(list, text, animate) {
   });
   const existing = new Map();
   Array.from(ul.children).forEach(li => {
-    if (li.dataset && li.dataset.id) existing.set(li.dataset.id, li);
+    if (!li.dataset || !li.dataset.id) return;
+    // A stale duplicate (same id twice) must not shadow the live node:
+    // drop extras on sight, so a bad render can never leave the list
+    // doubled again.
+    if (existing.has(li.dataset.id)) { li.remove(); return; }
+    existing.set(li.dataset.id, li);
   });
   const seen = new Set();
   const fragment = document.createDocumentFragment();
@@ -745,6 +840,13 @@ function renderList(list, text, animate) {
     if (li && li._html === html) {
       // Reuse: move into place, keep focus and DOM state.
     } else {
+      // WHY remove the old node first: creating a fresh node without
+      // removing the old one left both in the list — every language
+      // toggle doubled all 94 cards, and the keyed map could only see
+      // one of each pair, so later renders could never clean up.
+      // (Found by the Nov 2026 audit: 188 cards after one toggle, and
+      // "0 of 94" shown next to 94 stale cards after an empty search.)
+      if (li) li.remove();
       li = elementFromHtml(html);
       li._html = html;
     }
@@ -811,10 +913,16 @@ function refreshOpenStatuses() {
 
 // Shared filter state (chips, area, sort, search, nearest).
 const state = { q: '', area: 'all', openNow: false, late: false, sort: 'recommended', nearest: false, userLoc: null };
+// True only when the page was opened with ?sort=nearest in the URL.
+let nearestFromUrl = false;
 function syncStateFromInputs() {
   state.q = document.getElementById('searchInput').value.trim();
   state.area = document.getElementById('areaFilter').value;
   state.sort = document.getElementById('sortSelect').value;
+  // The sort dropdown also offers "Nearest first" once a location is
+  // known: picking it must behave exactly like the Nearest button
+  // (distances shown, button pressed), not just re-order silently.
+  state.nearest = state.sort === 'nearest';
 }
 function clearFilters() {
   state.q = ''; state.area = 'all'; state.openNow = false; state.late = false;
@@ -823,6 +931,44 @@ function clearFilters() {
   document.getElementById('areaFilter').value = 'all';
   document.getElementById('sortSelect').value = 'recommended';
   render({ announce: true });
+}
+// Ask for the visitor's location once and sort nearest-first.
+// Shared by the Nearest button and by a shared ?sort=nearest link.
+// On denial (or no location support) the sort falls back to
+// Recommended instead of leaving a "nearest" sort with no distances.
+function requestNearest() {
+  if (!('geolocation' in navigator)) {
+    state.nearest = false;
+    if (state.sort === 'nearest') state.sort = 'recommended';
+    showToast(I18N[lang].nearestUnsupported);
+    render({ announce: true });
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      // 21 pharmacies have verified coordinates; if none did, say so
+      // instead of sorting silently by nothing.
+      const anyGeo = pharmacies.some(p => p.lat != null && p.lng != null);
+      if (!anyGeo) {
+        state.nearest = false;
+        if (state.sort === 'nearest') state.sort = 'recommended';
+        showToast(I18N[lang].nearestNoCoords);
+        render({ announce: true });
+        return;
+      }
+      state.userLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      state.nearest = true;
+      state.sort = 'nearest';
+      render({ announce: true });
+    },
+    () => {
+      state.nearest = false;
+      if (state.sort === 'nearest') state.sort = 'recommended';
+      showToast(I18N[lang].nearestDenied);
+      render({ announce: true });
+    },
+    { timeout: 10000, maximumAge: 300000 }
+  );
 }
 function debounce(fn, ms) {
   let timer = null;
@@ -870,8 +1016,16 @@ function sharePharmacy(p) {
 function scrollToHashCard() {
   const id = (location.hash || '').slice(1);
   if (!id) return;
-  const li = document.querySelector(`#pharmacyList .card[data-id="${CSS.escape(id)}"]`);
-  if (!li) return;
+  let li = document.querySelector(`#pharmacyList .card[data-id="${CSS.escape(id)}"]`);
+  if (!li) {
+    // A shared link to a card the current filters hide (e.g. ?open=1
+    // at a time that pharmacy is closed): drop the filters so the
+    // card can actually be reached, instead of silently showing nothing.
+    if (!pharmacies.some(p => p.id === id)) return;
+    clearFilters();
+    li = document.querySelector(`#pharmacyList .card[data-id="${CSS.escape(id)}"]`);
+    if (!li) return;
+  }
   try { li.scrollIntoView({ block: 'start' }); } catch (e) { /* jsdom / old browsers */ }
   li.classList.add('card-highlight');
   setTimeout(() => li.classList.remove('card-highlight'), 4000);
@@ -973,6 +1127,9 @@ function loadData() {
       render({ announce: true });
       showOfflineNoteIfNeeded();
       scrollToHashCard();
+      // A shared ?sort=nearest link: ask for location once, now that
+      // the data (and its coordinates) is loaded.
+      if (nearestFromUrl) { nearestFromUrl = false; requestNearest(); }
     })
     .catch(() => {
       document.getElementById('pharmacyList').innerHTML = '';
@@ -996,7 +1153,9 @@ function showOfflineNoteIfNeeded() {
         : d.toLocaleString();
       note.textContent = I18N[lang].offlineNote(stamp);
     } else {
-      note.textContent = I18N[lang].offlineNote('');
+      // No saved date yet: say so in words. Interpolating the empty
+      // date into the normal string printed a bare "()" on screen.
+      note.textContent = I18N[lang].offlineNoteNoDate;
     }
     note.classList.remove('hidden');
   } else {
@@ -1024,21 +1183,18 @@ function init() {
   document.getElementById('statChipLate').addEventListener('click', () => { state.late = !state.late; render({ announce: true }); });
   document.getElementById('nearestBtn').addEventListener('click', () => {
     if (state.nearest) { state.nearest = false; state.sort = 'recommended'; render({ announce: true }); return; }
-    if (!('geolocation' in navigator)) { showToast(I18N[lang].nearestUnsupported); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        // No verified coordinates exist yet (geocoding found 0/41), so
-        // distances cannot be shown — say so instead of sorting silently.
-        const anyGeo = pharmacies.some(p => p.lat != null && p.lng != null);
-        if (!anyGeo) { showToast(I18N[lang].nearestNoCoords); return; }
-        state.userLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        state.nearest = true;
-        state.sort = 'nearest';
-        render({ announce: true });
-      },
-      () => showToast(I18N[lang].nearestDenied),
-      { timeout: 10000, maximumAge: 300000 }
-    );
+    requestNearest();
+  });
+  document.getElementById('emptySuggestBtn').addEventListener('click', e => {
+    // Apply the suggested area and clear the failed search text, so the
+    // visitor lands on real results instead of an empty page.
+    const area = e.currentTarget.dataset.area;
+    if (!area) return;
+    state.q = '';
+    state.area = area;
+    document.getElementById('searchInput').value = '';
+    document.getElementById('areaFilter').value = area;
+    render({ announce: true });
   });
   document.getElementById('langToggle').addEventListener('click', () => {
     lang = lang === 'bn' ? 'en' : 'bn';
@@ -1095,6 +1251,11 @@ function init() {
   }
   window.addEventListener('online', showOfflineNoteIfNeeded);
   window.addEventListener('offline', showOfflineNoteIfNeeded);
+  // Same-document navigation to a #pharmacy-id (a shared card link
+  // opened while already on the finder, or back/forward): a plain
+  // goto with only a hash change does not reload the page, so without
+  // this the link would do nothing at all.
+  window.addEventListener('hashchange', scrollToHashCard);
 
   loadData();
 }

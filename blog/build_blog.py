@@ -119,8 +119,11 @@ def reading_minutes(body_html):
 OG_IMAGE = f"{SITE_URL}/og.png"
 
 
-def page_head(title, description, canonical, is_article=False):
-    """SEO head: unique title/description, canonical, OG/Twitter, JSON-LD."""
+def page_head(title, description, canonical, is_article=False, extra_head=""):
+    """SEO head: unique title/description, canonical, OG/Twitter, JSON-LD.
+    extra_head is inserted INSIDE <head> (JSON-LD must live there — an
+    earlier version concatenated it after </head>, which browsers
+    tolerate but the HTML validator rejects)."""
     og_type = "article" if is_article else "website"
     article_meta = ""
     if is_article:
@@ -156,7 +159,7 @@ def page_head(title, description, canonical, is_article=False):
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="blog.css">
-</head>
+{extra_head}</head>
 """
 
 
@@ -200,9 +203,11 @@ def article_json_ld(article, canonical):
 
 
 def site_header(current):
-    """Top bar shared by all blog pages. 'current' marks the active nav."""
-    finder_class = ' class="blog-nav-active"' if current == "finder" else ""
-    guide_class = ' class="blog-nav-active"' if current == "guide" else ""
+    """Top bar shared by all blog pages. 'current' marks the active nav.
+    Same shape as the finder's header (brand left, clock + nav right)
+    so the blog reads as one product, not a bolt-on."""
+    finder_class = ' class="blog-nav-active" aria-current="page"' if current == "finder" else ""
+    guide_class = ' class="blog-nav-active" aria-current="page"' if current == "guide" else ""
     return f"""<body>
   <a class="skip-link" href="#main">মূল বিষয়বস্তুতে যান</a>
   <header class="topbar">
@@ -216,10 +221,13 @@ def site_header(current):
           <p>রাতে খোলা ফার্মেসি খুঁজুন — সময়, ফোন, দিকনির্দেশনা এক ট্যাপে।</p>
         </div>
       </div>
-      <nav class="blog-nav" aria-label="প্রধান মেনু">
-        <a href="../"{finder_class}>ফাইন্ডার</a>
-        <a href="./"{guide_class}>গাইড</a>
-      </nav>
+      <div class="top-right">
+        <span class="clock" id="blogClock" role="timer" aria-live="off">—</span>
+        <nav class="blog-nav" aria-label="প্রধান মেনু">
+          <a href="../"{finder_class}>ফাইন্ডার</a>
+          <a href="./"{guide_class}>গাইড</a>
+        </nav>
+      </div>
     </div>
   </header>
 """
@@ -229,6 +237,34 @@ SITE_FOOTER = """  <footer>
     <p>RaatPharmacy — Arohon Build for Bangladesh। জরুরি অবস্থায় ৯৯৯-এ কল করুন।</p>
     <p class="footer-links"><a href="../">ফার্মেসি খুঁজুন</a> · <a href="./">সব গাইড</a> · <a href="https://github.com/buildempirecr/raatpharmacy">GitHub</a></p>
   </footer>
+  <script>
+  // Live Dhaka clock in the blog header (same time as the finder).
+  // WHY inline here: blog pages have no JS bundle; this is 20 lines.
+  // Bangla day-part words, like the finder ("১১:৩০ রাত"), never AM/PM.
+  (function () {
+    var el = document.getElementById('blogClock');
+    if (!el) return;
+    var BN = '০১২৩৪৫৬৭৮৯';
+    var digits = function (s) { return String(s).replace(/[0-9]/g, function (d) { return BN[Number(d)]; }); };
+    var part = function (h) {
+      if (h >= 4 && h < 6) return 'ভোর';
+      if (h >= 6 && h < 12) return 'সকাল';
+      if (h >= 12 && h < 16) return 'দুপুর';
+      if (h >= 16 && h < 18) return 'বিকাল';
+      if (h >= 18 && h < 20) return 'সন্ধ্যা';
+      return 'রাত';
+    };
+    var tick = function () {
+      var d = new Date();
+      var h = d.getHours();
+      var h12 = h % 12 === 0 ? 12 : h % 12;
+      var mm = String(d.getMinutes()).padStart(2, '0');
+      el.textContent = digits(h12) + ':' + digits(mm) + ' ' + part(h) + ' • ঢাকা';
+    };
+    tick();
+    setInterval(tick, 60000);
+  })();
+  </script>
 </body>
 </html>
 """
@@ -245,8 +281,7 @@ def render_article(article, pharmacies):
         for rel in article["related"]
     )
     return (
-        page_head(article["title"], article["description"], canonical, is_article=True)
-        + article_json_ld(article, canonical)
+        page_head(article["title"], article["description"], canonical, is_article=True, extra_head=article_json_ld(article, canonical))
         + site_header("guide")
         + f"""  <main id="main" tabindex="-1" class="blog-main">
     <nav class="breadcrumb" aria-label="ব্রেডক্রাম্ব">
@@ -281,6 +316,28 @@ def render_article(article, pharmacies):
     )
 
 
+def index_json_ld(articles):
+    """CollectionPage + ItemList structured data for the guide index —
+    the index page previously had no JSON-LD at all."""
+    items = ",\n".join(
+        '{"@type": "ListItem", "position": %d, "name": "%s", '
+        '"item": "%s/blog/%s.html"}' % (i + 1, escape(a["h1"]), SITE_URL, a["slug"])
+        for i, a in enumerate(articles)
+    )
+    return f"""  <script type="application/ld+json">
+{{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "রাতের ফার্মেসি গাইড",
+  "description": "ঢাকায় রাতে খোলা ফার্মেসি খোঁজার গাইড — এলাকা অনুযায়ী তালিকা, জরুরি ওষুধের চেকলিস্ট, খোলা আছে কিনা বোঝার উপায়।",
+  "url": "{SITE_URL}/blog/",
+  "inLanguage": "bn",
+  "mainEntity": {{"@type": "ItemList", "itemListElement": [{items}]}}
+}}
+  </script>
+"""
+
+
 def render_index(articles, pharmacies):
     """Build blog/index.html — the guide list."""
     total = len(pharmacies)
@@ -301,6 +358,7 @@ def render_index(articles, pharmacies):
             "গাইড — রাতে খোলা ফার্মেসি ঢাকা | RaatPharmacy",
             "ঢাকায় রাতে খোলা ফার্মেসি খোঁজার গাইড — এলাকা অনুযায়ী তালিকা, জরুরি ওষুধের চেকলিস্ট, খোলা আছে কিনা বোঝার উপায়।",
             canonical,
+            extra_head=index_json_ld(articles),
         )
         + site_header("guide")
         + f"""  <main id="main" tabindex="-1" class="blog-main">

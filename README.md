@@ -40,14 +40,15 @@ vercel --prod
 ## Features
 
 - **94 verified pharmacies** across 41 Dhaka areas (plus one verified Islamia branch in Narsingdi, labelled as outside Dhaka)
-- **Search** by pharmacy name, area or address (Bangla + English)
+- **Search** by pharmacy name, area, address or phone number (Bangla + English; a phone search matches `01677…`, `+8801677…` and the spaced display form alike)
+- **Empty search suggests the closest area** — a typo like "gulsan" offers "Did you mean Gulshan?" instead of a dead end
 - **"Open now" toggle** — computed live from the visitor's own clock, including overnight hours (e.g. 8:00 AM–1:30 AM counts as open at 1:00 AM) and per-day hours where a source states them (see "Day-based hours" below)
 - **"Open past midnight" filter** — 14 pharmacies are open 24 hours
-- **"Nearest" sort** — after the visitor taps "Nearest" and shares a location, pharmacies with verified coordinates show their distance ("X.X কিমি") and sort nearest-first; pharmacies without coordinates never show a distance
+- **"Nearest" sort** — after the visitor taps "Nearest" and shares a location, pharmacies with verified coordinates show their distance ("X.X কিমি") and sort nearest-first; pharmacies without coordinates never show a distance. A one-line note under the button explains before asking that the location is used only for sorting, never sent or stored. A shared `?sort=nearest` link asks for location once on load, and falls back to Recommended if denied.
 - **Each card:** name, area, address, hours, "Closes at / Opens at" countdown, phone, big Call button (`tel:`), WhatsApp button (verified mobiles only), Google Maps directions link (exact coordinates when known, otherwise a name+address search), and "last verified" date
 - **"Call to confirm stock"** on every card — stock is never claimed live
 - **"Hours wrong?"** — a visitor can report a correction; it is saved only in their own browser (`localStorage`) and shown as "Correction reported — not yet verified". Listed hours are never silently changed, and the toast says plainly that the team has not been told yet (with a mail link to tell them)
-- **Shareable links** — search, filters and sort live in the URL, and every card has a share button (deep link to that pharmacy)
+- **Shareable links** — search, filters and sort live in the URL, and every card has a share button (deep link to that pharmacy). A deep link scrolls to its card even when opened while already on the finder, and if the current filters would hide the card they are cleared so the link always lands.
 - **Bangla + English toggle** (default Bangla, remembered), mobile-first, dark night-friendly design, big tap targets (≥44px), keyboard focus kept during typing, dialog with focus trap + Escape
 - **Offline** — service worker caches the app shell + data; manifest, skeleton loading and a Bangla error message with retry when the data fails to load
 
@@ -83,7 +84,7 @@ The site carries its own guides at `/blog/` so Google can find it without any so
 
 - **6 articles, all in Bangla** (26 Nov 2026): how to find a night pharmacy in Dhaka (pillar page), Gulshan–Banani, Dhanmondi–Mohammadpur, Mirpur–Uttara, what to do when emergency medicine is needed at night, and how to tell whether a pharmacy is open. Each article is 615–729 words of prose plus a pharmacy list rendered from the data.
 - **Built, not hand-typed:** `blog/build_blog.py` reads `data/pharmacies.json` and renders every article, including each pharmacy list — so no phone, address or hours in an article can ever disagree with the finder. Re-run it after any data change: `python3 blog/build_blog.py`. It also regenerates `sitemap.xml` and `robots.txt`.
-- **Per-article SEO:** unique title (≤60 chars) and description (≤155 chars), canonical URL, Open Graph + Twitter tags (reusing `og.png`), JSON-LD `Article` + `BreadcrumbList`, one `h1`, `lang="bn"`. Each article ends with a CTA back to the finder (with the right `?area=` / `?open=` query) and links to 2–3 other articles.
+- **Per-article SEO:** unique title (≤60 chars) and description (≤155 chars), canonical URL, Open Graph + Twitter tags (reusing `og.png`), JSON-LD `Article` + `BreadcrumbList` inside `<head>`, one `h1`, `lang="bn"`. The guide index carries `CollectionPage` + `ItemList` JSON-LD. Each article ends with a CTA back to the finder (with the right `?area=` / `?open=` query) and links to 2–3 other articles. Blog pages share the finder's header (live Dhaka clock, Finder/Guide nav) and footer, so they read as one product.
 - **Honesty rules, same as the finder:** an entry with no verified hours is shown as "সময় নিশ্চিত নয়", an unverified phone is labelled "অযাচাইকৃত", and an entry with no phone shows no phone. Friday closures and the 2–4 PM break are stated where the data says so; nothing is guessed.
 
 ## Project structure
@@ -116,12 +117,12 @@ raatpharmacy/
 
 1. In `blog/build_blog.py`, add a new `body()` function (Bangla prose, 600–900 words) and an entry in `ARTICLES` with `slug`, `title` (≤60 chars), `description` (≤155 chars), `h1`, `lede`, `teaser`, `cta_href` (finder link with query params) and `cta_text`.
 2. Add the slug to `RELATED` (2–3 other articles) and to the other articles' related lists where it fits.
-3. Add the slug to the `ASSETS` list in `sw.js` and bump the cache name (`raatpharmacy-v4` → `v5`).
+3. Add the slug to the `ASSETS` list in `sw.js` and bump the cache name (`raatpharmacy-v5` → `v6`).
 4. Run `python3 blog/build_blog.py` and check the printed word counts and the verification script before pushing.
 
 ## Code style (readable code)
 
-This project is judged partly on readable code, so every line is written for a reader years from now: clear descriptive names (no cryptic abbreviations), short functions that do one thing, a short comment above each section explaining **why** it exists (not just what it does), consistent formatting, no clever one-liners, no dead code. If shorter and clearer conflict, clearer wins. The service worker cache name (`raatpharmacy-v4` in `sw.js`) must be bumped on every release that changes a cached file, or visitors keep seeing the old version.
+This project is judged partly on readable code, so every line is written for a reader years from now: clear descriptive names (no cryptic abbreviations), short functions that do one thing, a short comment above each section explaining **why** it exists (not just what it does), consistent formatting, no clever one-liners, no dead code. If shorter and clearer conflict, clearer wins. The service worker cache name (`raatpharmacy-v5` in `sw.js`) must be bumped on every release that changes a cached file, or visitors keep seeing the old version.
 
 ## Tech
 
