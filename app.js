@@ -53,31 +53,86 @@ function isOpenAt(p, nowMin, date) {
   if (close === 0) return nowMin >= open; // closes at midnight
   return nowMin >= open || nowMin < close; // overnight, e.g. 08:00-01:30
 }
-// "Open past midnight" for the late-night filter: 24h, or closes after
-// midnight (00:30 / 01:00 / 01:30 / 03:00), or opens at midnight.
-function isLateNight(p) {
-  if (p.hours24) return true;
-  if (!p.open || !p.close) return false;
-  const open = toMinutes(p.open);
-  const close = toMinutes(p.close);
-  if (open === 0) return true;
-  return close <= open && close > 0 && close <= 210;
+// "Open late at night" for the late-night filter: 24h, closes at or
+// after midnight, opens at midnight, or an overnight close (00:30–03:30).
+// WHY hoursForDay, not p.open/p.close: day-based hours (hoursByDay) can
+// close a pharmacy on its closed day and give it different hours on
+// other days. Reading the raw fields ignored all of that — a
+// Friday-closed pharmacy kept its late badge on Friday, and an
+// hoursByDay-only pharmacy could never be late-night at all.
+// WHY midnight counts as late: a pharmacy open until 24:00 is exactly
+// what a visitor at 23:00 needs. The label reads as "open late into
+// the night" (see lateBadge/statLate), not strictly "past midnight".
+function isLateNight(p, date) {
+  const h = hoursForDay(p, date || new Date());
+  if (!h || h.closed) return false;
+  if (h.hours24) return true;
+  const open = toMinutes(h.open);
+  const close = toMinutes(h.close);
+  if (open === 0) return true; // opens at midnight
+  if (close === 1440 || close === 0) return true; // closes at midnight ("24:00" or "00:00")
+  return close <= open && close > 0 && close <= 210; // overnight, closes 00:30–03:30
+}
+
+// Weekday names for the "opens" line when the next opening is more
+// than a day away — "খুলবে রবিবার ৯:০০ সকাল", never a bare time that
+// reads as if it were tomorrow. Indexed by Date.getDay() (0 = Sunday).
+function weekdayName(dayIndex, lang) {
+  const names = {
+    bn: ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'],
+    en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+  };
+  return (names[lang] || names.en)[dayIndex];
+}
+
+// The next opening after `nowMin` on `date`: later today, or the next
+// day within a week that opens at all. Returns
+// { kind: 'opens', dayOffset, open, hours24, mins } or null (never
+// opens / unknown). dayOffset 0 means later today. WHY a 7-day scan: the old code only
+// looked at tomorrow. A Friday-closed pharmacy on Thursday night then
+// promised a Friday 09:00 opening that never happens, and on a closed
+// day whose next day was also closed it showed no "opens" line at all.
+function nextOpening(p, nowMin, date) {
+  const today = date || new Date();
+  const h = hoursForDay(p, today);
+  if (!h || h.hours24) return null; // unknown hours, or always open
+  if (!h.closed) {
+    const open = toMinutes(h.open);
+    const close = toMinutes(h.close);
+    // Opens later today: before opening, or in the closed stretch of
+    // an overnight schedule (between its close and its open).
+    if (close > open) {
+      if (nowMin < open) return { kind: 'opens', dayOffset: 0, open: h.open, hours24: false, mins: open - nowMin };
+    } else if (nowMin < open && nowMin >= close) {
+      return { kind: 'opens', dayOffset: 0, open: h.open, hours24: false, mins: open - nowMin };
+    }
+  }
+  // Today is closed all day, or today's opening has passed: scan ahead.
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const dayHours = hoursForDay(p, d);
+    if (!dayHours || dayHours.closed) continue;
+    // Minutes until 00:00 of that day, plus its opening time (a 24h
+    // day "opens" at midnight).
+    const mins = i * 1440 - nowMin + (dayHours.hours24 ? 0 : toMinutes(dayHours.open));
+    return { kind: 'opens', dayOffset: i, open: dayHours.hours24 ? '00:00' : dayHours.open, hours24: !!dayHours.hours24, mins };
+  }
+  return null;
 }
 
 // Minutes until the pharmacy closes (if open) or opens (if closed).
 // Returns { kind: 'closes' | 'opens', mins } or null (24h / unknown).
-// Day-aware: a Friday-closed pharmacy reports the time until tomorrow's
-// opening; a mid-day break reports the time until the break ends.
+// `date` is the single "now" for this render pass — callers pass the
+// same Date they used for nowMin, so a render straddling midnight
+// (23:59 -> 00:00) can never mix two different days.
 function minutesUntil(p, nowMin, date) {
   const today = date || new Date();
   const h = hoursForDay(p, today);
   if (!h || h.hours24) return null;
   if (h.closed) {
-    const tom = new Date(today);
-    tom.setDate(tom.getDate() + 1);
-    const th = hoursForDay(p, tom);
-    if (!th || th.closed || th.hours24) return null;
-    return { kind: 'opens', mins: (1440 - nowMin) + toMinutes(th.open) };
+    // Closed all day: the next opening, up to a week out.
+    return nextOpening(p, nowMin, today);
   }
   if (inBreak(p, nowMin)) {
     const br = p.breaks.find(([bs, be]) => nowMin >= toMinutes(bs) && nowMin < toMinutes(be));
@@ -99,12 +154,9 @@ function minutesUntil(p, nowMin, date) {
     else mins = close - nowMin; // after midnight, still open
     return { kind: 'closes', mins };
   }
-  // Closed: next opening.
-  let mins;
-  if (close > open) mins = nowMin < open ? open - nowMin : (1440 - nowMin) + open;
-  else mins = open - nowMin; // overnight schedule, closed between close and open
-  if (mins <= 0) mins += 1440;
-  return { kind: 'opens', mins };
+  // Closed now: the next opening, up to a week out (a Friday-closed
+  // pharmacy on Thursday night opens Saturday, not Friday).
+  return nextOpening(p, nowMin, today);
 }
 
 // Effective closing time for "closes latest" sorting: 24h first, then
@@ -180,26 +232,39 @@ function formatDistance(km, lang) {
   return lang === 'bn' ? `${bnDigits(v)} কিমি` : `${v} km`;
 }
 
+// "Opens at 9:00 AM" — with the weekday when the opening is more
+// than a day away, so a Sunday opening never reads as if it were
+// tomorrow. `date` is the "now" of this render pass.
+function opensLine(next, lang, text, date) {
+  const time = formatTime(next.open, lang);
+  if (next.dayOffset <= 1) return `${text.opensAt} ${time}`;
+  const d = new Date(date);
+  d.setDate(d.getDate() + next.dayOffset);
+  return `${text.opensAt} ${weekdayName(d.getDay(), lang)} ${time}`;
+}
+
 // Next transition text: "Closes at 1:30 AM" or "Opens at 8:00 AM".
 // 24h pharmacies already state it in the hours line, so no repeat.
-// Day-aware: a Friday-closed pharmacy shows tomorrow's opening time.
-function nextLine(p, nowMin, lang, text) {
-  const h = hoursForDay(p, new Date());
+// `date` is the single "now" for this render pass — it must be the
+// same Date the caller used for nowMin (see minutesUntil).
+function nextLine(p, nowMin, lang, text, date) {
+  const today = date || new Date();
+  const h = hoursForDay(p, today);
   if (!h || h.hours24) return '';
   if (h.closed) {
-    const tom = new Date();
-    tom.setDate(tom.getDate() + 1);
-    const th = hoursForDay(p, tom);
-    if (!th || th.closed || th.hours24) return '';
-    return `${text.opensAt} ${formatTime(th.open, lang)}`;
+    const next = nextOpening(p, nowMin, today);
+    if (!next) return '';
+    return opensLine(next, lang, text, today);
   }
   if (inBreak(p, nowMin)) {
     const br = p.breaks.find(([bs, be]) => nowMin >= toMinutes(bs) && nowMin < toMinutes(be));
     if (br) return `${text.opensAt} ${formatTime(br[1], lang)}`;
   }
-  const open = isOpenAt(p, nowMin);
+  const open = isOpenAt(p, nowMin, today);
   if (open) return `${text.closesAt} ${formatTime(h.close, lang)}`;
-  return `${text.opensAt} ${formatTime(h.open, lang)}`;
+  const next = nextOpening(p, nowMin, today);
+  if (!next) return `${text.opensAt} ${formatTime(h.open, lang)}`;
+  return opensLine(next, lang, text, today);
 }
 
 // ---------- i18n ----------
@@ -225,7 +290,7 @@ const I18N = {
     nearestDenied: 'অবস্থান পাওয়া যায়নি — লোকেশন অনুমতি দিলে কাছের ফার্মেসি দেখাবে।',
     nearestUnsupported: 'এই ব্রাউজারে লোকেশন কাজ করে না।',
     nearestNoCoords: 'কোনো ফার্মেসির যাচাই করা অবস্থান এখনো নেই — দূরত্ব দেখানো যাচ্ছে না।',
-    statTotal: 'ফার্মেসি', statOpen: 'এখন খোলা', statLate: 'রাত ১২টার পরেও খোলা',
+    statTotal: 'ফার্মেসি', statOpen: 'এখন খোলা', statLate: 'গভীর রাত পর্যন্ত খোলা',
     stockNote: 'স্টকের তথ্য লাইভ নয় — যাওয়ার আগে ফোন করে ওষুধ আছে কিনা জেনে নিন।',
     searchPlaceholder: 'ফার্মেসি, এলাকা বা ঠিকানা লিখুন…',
     searchLabel: 'খুঁজুন',
@@ -236,7 +301,7 @@ const I18N = {
     closesIn: mins => `বন্ধ হতে বাকি ${formatDuration(mins, 'bn')}`,
     opensIn: mins => `খুলতে বাকি ${formatDuration(mins, 'bn')}`,
     closingSoon: 'শীঘ্রই বন্ধ হবে — এখনই কল করুন',
-    lateBadge: 'রাত ১২টার পরেও খোলা',
+    lateBadge: 'গভীর রাত পর্যন্ত খোলা',
     call: 'কল করুন', whatsapp: 'WhatsApp', directions: 'দিকনির্দেশনা',
     dialing: 'ডায়াল হচ্ছে…',
     share: 'শেয়ার করুন',
@@ -292,7 +357,7 @@ const I18N = {
     nearestDenied: 'Location not available — allow location access to see the nearest pharmacies.',
     nearestUnsupported: 'Location is not supported in this browser.',
     nearestNoCoords: 'No pharmacy has a verified location yet — distances cannot be shown.',
-    statTotal: 'pharmacies', statOpen: 'open now', statLate: 'open past midnight',
+    statTotal: 'pharmacies', statOpen: 'open now', statLate: 'open late into the night',
     stockNote: 'Stock is not live — call ahead to confirm the medicine is in stock.',
     searchPlaceholder: 'Search pharmacy, area or address…',
     searchLabel: 'Search',
@@ -303,7 +368,7 @@ const I18N = {
     closesIn: mins => `Closes in ${formatDuration(mins, 'en')}`,
     opensIn: mins => `Opens in ${formatDuration(mins, 'en')}`,
     closingSoon: 'Closing soon — call now',
-    lateBadge: 'Open past midnight',
+    lateBadge: 'Open late into the night',
     call: 'Call', whatsapp: 'WhatsApp', directions: 'Directions',
     dialing: 'Dialing…',
     share: 'Share',
@@ -384,8 +449,11 @@ function saveCorrection(id, text) {
   corrections = c;
 }
 
-function nowMinutes() {
-  const d = new Date();
+// Minutes since midnight for `date` (default: right now). Callers pass
+// the same Date they use everywhere else in the render pass, so a pass
+// straddling midnight never mixes two different days.
+function nowMinutes(date) {
+  const d = date || new Date();
   return d.getHours() * 60 + d.getMinutes();
 }
 function clockText() {
@@ -417,7 +485,12 @@ function matchesQuery(p, q) {
       const digits = (field || '').replace(/\D/g, '');
       if (!digits) continue;
       const nd = norm(digits);
-      if (nd.includes(nq) || nq.includes(nd)) return true;
+      // One direction only: the query is a prefix/fragment of the
+      // stored number ("01677" finds 01677602723). The reverse check
+      // (query contains the number) let any long digit string that
+      // happened to contain a real number match it — e.g. pasting
+      // "01677602723000" matched that pharmacy.
+      if (nd.includes(nq)) return true;
     }
   }
   // Include the Bangla area name so Bangla search terms match too.
@@ -428,19 +501,22 @@ function distanceTo(p, loc) {
   if (!loc || p.lat == null || p.lng == null) return null;
   return haversineKm(loc.lat, loc.lng, p.lat, p.lng);
 }
-function filteredList(state) {
-  const now = nowMinutes();
+function filteredList(state, date) {
+  // One Date for the whole pass (see nowMinutes): every open/late
+  // check below must agree on which day "now" is.
+  const today = date || new Date();
+  const now = nowMinutes(today);
   let list = pharmacies.filter(p => {
     if (state.area !== 'all' && p.area !== state.area) return false;
     if (!matchesQuery(p, state.q)) return false;
-    if (state.openNow && isOpenAt(p, now) !== true) return false;
-    if (state.late && !isLateNight(p)) return false;
+    if (state.openNow && isOpenAt(p, now, today) !== true) return false;
+    if (state.late && !isLateNight(p, today)) return false;
     return true;
   });
   if (state.sort === 'name') {
     list.sort((a, b) => a.name.localeCompare(b.name));
   } else if (state.sort === 'latest') {
-    list.sort((a, b) => effectiveClose(b) - effectiveClose(a) || a.name.localeCompare(b.name));
+    list.sort((a, b) => effectiveClose(b, today) - effectiveClose(a, today) || a.name.localeCompare(b.name));
   } else if (state.sort === 'nearest' && state.userLoc) {
     list.sort((a, b) => {
       const da = distanceTo(a, state.userLoc);
@@ -453,11 +529,11 @@ function filteredList(state) {
   } else {
     // Recommended: open now first, then late-night first, then name A–Z.
     list.sort((a, b) => {
-      const oa = isOpenAt(a, now) === true ? 0 : 1;
-      const ob = isOpenAt(b, now) === true ? 0 : 1;
+      const oa = isOpenAt(a, now, today) === true ? 0 : 1;
+      const ob = isOpenAt(b, now, today) === true ? 0 : 1;
       if (oa !== ob) return oa - ob;
-      const la = isLateNight(a) ? 0 : 1;
-      const lb = isLateNight(b) ? 0 : 1;
+      const la = isLateNight(a, today) ? 0 : 1;
+      const lb = isLateNight(b, today) ? 0 : 1;
       if (la !== lb) return la - lb;
       return a.name.localeCompare(b.name);
     });
@@ -514,8 +590,8 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function statusBadge(p, text, now) {
-  const open = isOpenAt(p, now);
+function statusBadge(p, text, now, date) {
+  const open = isOpenAt(p, now, date);
   if (open === true) return `<span class="badge badge-open"><span class="dot" aria-hidden="true"></span>${escapeHtml(text.openNow)}</span>`;
   if (open === false) return `<span class="badge badge-closed"><span class="dot" aria-hidden="true"></span>${escapeHtml(text.closed)}</span>`;
   return `<span class="badge badge-unknown">${escapeHtml(text.hoursUnknown)}</span>`;
@@ -554,22 +630,23 @@ function buildCardActions(pharmacy, text) {
   return `<div class="actions">${callButton}${whatsappButton}${directionsButton}${shareButton}</div>`;
 }
 
-function cardHtml(p, text) {
-  const now = nowMinutes();
-  const open = isOpenAt(p, now);
+function cardHtml(p, text, date) {
+  const today = date || new Date();
+  const now = nowMinutes(today);
+  const open = isOpenAt(p, now, today);
   // All data strings (names, addresses, hours, notes, sources) are
   // English; when the page is Bangla, mark them lang="en" so screen
   // readers pronounce them correctly.
   const en = lang === 'bn' ? ' lang="en"' : '';
-  const badge = statusBadge(p, text, now);
-  const late = isLateNight(p) ? `<span class="badge badge-late">${ICON_MOON}${escapeHtml(text.lateBadge)}</span>` : '';
+  const badge = statusBadge(p, text, now, today);
+  const late = isLateNight(p, today) ? `<span class="badge badge-late">${ICON_MOON}${escapeHtml(text.lateBadge)}</span>` : '';
   const hoursLine = p.hours24
     ? `<p class="hours-line"><strong>${escapeHtml(text.open24)}</strong></p>`
     : p.hoursText
       ? `<p class="hours-line"><strong${en}>${escapeHtml(p.hoursText)}</strong></p>`
       : `<p class="hours-line">${escapeHtml(text.hoursUnknown)}</p>`;
-  const next = nextLine(p, now, lang, text);
-  const until = minutesUntil(p, now);
+  const next = nextLine(p, now, lang, text, today);
+  const until = minutesUntil(p, now, today);
   let countdown = '';
   if (until && until.kind === 'closes') {
     const soon = until.mins <= 90;
@@ -681,10 +758,11 @@ function renderPageText(text) {
 
 // Refresh the three stat chips and their pressed states so the chips
 // always agree with the active filter.
-function renderStats(text) {
-  const now = nowMinutes();
-  const openCount = pharmacies.filter(p => isOpenAt(p, now) === true).length;
-  const lateCount = pharmacies.filter(isLateNight).length;
+function renderStats(text, date) {
+  const today = date || new Date();
+  const now = nowMinutes(today);
+  const openCount = pharmacies.filter(p => isOpenAt(p, now, today) === true).length;
+  const lateCount = pharmacies.filter(p => isLateNight(p, today)).length;
   document.getElementById('statTotal').textContent = formatNumber(pharmacies.length, lang);
   document.getElementById('statTotalLabel').textContent = text.statTotal;
   document.getElementById('statOpen').textContent = formatNumber(openCount, lang);
@@ -788,12 +866,15 @@ function render(opts) {
   const announce = !!(opts && opts.announce);
   const focusDescription = captureFocus();
   const text = I18N[lang];
+  // One Date for this whole render pass: every open/closed/late
+  // decision below must agree on which day "now" is (see nowMinutes).
+  const today = new Date();
   renderPageText(text);
-  renderStats(text);
+  renderStats(text, today);
   renderAreaOptions(text);
   renderFilterControls(text);
-  const list = filteredList(state);
-  renderList(list, text, announce);
+  const list = filteredList(state, today);
+  renderList(list, text, announce, today);
   if (announce) {
     document.getElementById('resultCount').textContent = text.results(list.length, pharmacies.length);
   }
@@ -818,7 +899,7 @@ function render(opts) {
 // is unchanged, so focus inside a card survives re-renders.
 // When `animate` is true (a user filter/search action), the list plays a
 // subtle 120ms fade+rise; the CSS disables it under reduced motion.
-function renderList(list, text, animate) {
+function renderList(list, text, animate, date) {
   const ul = document.getElementById('pharmacyList');
   if (animate) {
     ul.classList.remove('list-anim');
@@ -844,7 +925,7 @@ function renderList(list, text, animate) {
   const fragment = document.createDocumentFragment();
   list.forEach(p => {
     seen.add(p.id);
-    const html = cardHtml(p, text);
+    const html = cardHtml(p, text, date);
     let li = existing.get(p.id);
     if (li && li._html === html) {
       // Reuse: move into place, keep focus and DOM state.
@@ -868,13 +949,14 @@ function renderList(list, text, animate) {
 // Update one visible card's live status in place: open/closed badge,
 // next opening/closing line, and countdown. Replacing the whole card
 // would steal focus, so only these three spots are touched.
-function refreshCardStatus(cardElement, pharmacy, text, now) {
-  const open = isOpenAt(pharmacy, now);
+// `date` is the single "now" for this refresh (see nowMinutes).
+function refreshCardStatus(cardElement, pharmacy, text, now, date) {
+  const open = isOpenAt(pharmacy, now, date);
   cardElement.classList.toggle('card-open', open === true);
   const badgeSlot = cardElement.querySelector('.card-badges .badge');
-  if (badgeSlot) badgeSlot.outerHTML = statusBadge(pharmacy, text, now);
+  if (badgeSlot) badgeSlot.outerHTML = statusBadge(pharmacy, text, now, date);
   const nextElement = cardElement.querySelector('.next-line');
-  const nextText = nextLine(pharmacy, now, lang, text);
+  const nextText = nextLine(pharmacy, now, lang, text, date);
   if (nextElement) {
     if (nextText) nextElement.textContent = nextText;
     else nextElement.remove();
@@ -882,7 +964,7 @@ function refreshCardStatus(cardElement, pharmacy, text, now) {
     const hoursElement = cardElement.querySelector('.hours-line');
     if (hoursElement) hoursElement.insertAdjacentHTML('afterend', `<p class="next-line">${escapeHtml(nextText)}</p>`);
   }
-  const until = minutesUntil(pharmacy, now);
+  const until = minutesUntil(pharmacy, now, date);
   let countdownElement = cardElement.querySelector('.countdown');
   let countdownText = '';
   let soon = false;
@@ -904,19 +986,24 @@ function refreshCardStatus(cardElement, pharmacy, text, now) {
 // The 60-second refresh updates ONLY the clock, the stat numbers, and each
 // visible card's status badge / next line / countdown — never the whole
 // list, never the aria-live result count, so focus is never lost.
+// One Date for the whole refresh (see nowMinutes); the pharmacy lookup
+// is a Map, not a find-per-card, so the refresh stays O(n) as the
+// list grows (it was O(n²): a find inside every card's update).
 function refreshOpenStatuses() {
   const text = I18N[lang];
   document.getElementById('clock').textContent = clockText();
   if (!pharmacies.length) return;
-  const now = nowMinutes();
-  const openCount = pharmacies.filter(p => isOpenAt(p, now) === true).length;
-  const lateCount = pharmacies.filter(isLateNight).length;
+  const today = new Date();
+  const now = nowMinutes(today);
+  const openCount = pharmacies.filter(p => isOpenAt(p, now, today) === true).length;
+  const lateCount = pharmacies.filter(p => isLateNight(p, today)).length;
   document.getElementById('statOpen').textContent = formatNumber(openCount, lang);
   document.getElementById('statLate').textContent = formatNumber(lateCount, lang);
+  const pharmacyById = new Map(pharmacies.map(p => [p.id, p]));
   document.querySelectorAll('#pharmacyList .card').forEach(cardElement => {
-    const pharmacy = pharmacies.find(x => x.id === cardElement.dataset.id);
+    const pharmacy = pharmacyById.get(cardElement.dataset.id);
     if (!pharmacy) return;
-    refreshCardStatus(cardElement, pharmacy, text, now);
+    refreshCardStatus(cardElement, pharmacy, text, now, today);
   });
 }
 
@@ -939,6 +1026,18 @@ function clearFilters() {
   document.getElementById('searchInput').value = '';
   document.getElementById('areaFilter').value = 'all';
   document.getElementById('sortSelect').value = 'recommended';
+  render({ announce: true });
+}
+// Clear only the FILTERS (search / area / open-now / late-night) and
+// keep the sort — including nearest. Used when a shared #card link
+// points at a card the current filters hide: the visitor asked for
+// that card, not for their sort to be reset. The full clearFilters()
+// above also resets sort=nearest, so a ?sort=nearest#id link lost its
+// sort the moment the card was un-hidden.
+function clearFiltersOnly() {
+  state.q = ''; state.area = 'all'; state.openNow = false; state.late = false;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('areaFilter').value = 'all';
   render({ announce: true });
 }
 // Ask for the visitor's location once and sort nearest-first.
@@ -1036,8 +1135,9 @@ function scrollToHashCard() {
     // A shared link to a card the current filters hide (e.g. ?open=1
     // at a time that pharmacy is closed): drop the filters so the
     // card can actually be reached, instead of silently showing nothing.
+    // Only the filters are dropped — the sort (incl. nearest) stays.
     if (!pharmacies.some(p => p.id === id)) return;
-    clearFilters();
+    clearFiltersOnly();
     li = document.querySelector(`#pharmacyList .card[data-id="${CSS.escape(id)}"]`);
     if (!li) return;
   }
@@ -1287,5 +1387,5 @@ if (typeof document !== 'undefined') {
 }
 // Export pure helpers for Node testing.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { toMinutes, isOpenAt, isLateNight, formatTime, minutesUntil, effectiveClose, formatDuration, haversineKm, bnDayPart, hoursForDay, inBreak };
+  module.exports = { toMinutes, isOpenAt, isLateNight, formatTime, minutesUntil, effectiveClose, formatDuration, haversineKm, bnDayPart, hoursForDay, inBreak, nextLine, nextOpening, matchesQuery, weekdayName, nowMinutes };
 }
