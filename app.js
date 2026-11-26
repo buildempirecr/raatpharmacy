@@ -209,6 +209,9 @@ const I18N = {
     pitch: 'রাতে খোলা ফার্মেসি খুঁজুন — সময়, ফোন, দিকনির্দেশনা এক ট্যাপে।',
     heroTitle: 'আজ রাতে খোলা ফার্মেসি',
     heroSub: 'ঢাকায় এখন কোন ফার্মেসি খোলা আছে — এক নজরে দেখে নিন, তারপর কল করুন।',
+    openNowCta: 'এখন খোলা ফার্মেসি দেখুন',
+    heroImgAlt: 'ঢাকার রাতে খোলা ফার্মেসির ইলাস্ট্রেশন — জ্বলজ্বলে সবুজ ক্রস আর চাঁদ',
+    heroCaption: 'রাতের ঢাকা — ইলাস্ট্রেশন',
     filtersTitle: 'খুঁজে নিন',
     sortLabel: 'সাজান',
     sortRecommended: 'সেরা মিল প্রথমে',
@@ -273,6 +276,9 @@ const I18N = {
     pitch: 'Find an open pharmacy near you at night — hours, phone, directions in one tap.',
     heroTitle: 'Open pharmacies tonight',
     heroSub: 'See which Dhaka pharmacies are open right now — then call ahead.',
+    openNowCta: 'Show pharmacies open now',
+    heroImgAlt: 'Illustration of an open pharmacy at night in Dhaka — glowing green cross and crescent moon',
+    heroCaption: 'Night in Dhaka — illustration',
     filtersTitle: 'Refine',
     sortLabel: 'Sort by',
     sortRecommended: 'Best match first',
@@ -640,6 +646,9 @@ function renderPageText(text) {
   document.getElementById('pitch').textContent = text.pitch;
   document.getElementById('heroTitle').textContent = text.heroTitle;
   document.getElementById('heroSub').textContent = text.heroSub;
+  document.getElementById('openNowCtaText').textContent = text.openNowCta;
+  document.getElementById('heroImg').alt = text.heroImgAlt;
+  document.getElementById('heroCaption').textContent = text.heroCaption;
   document.getElementById('filtersTitle').textContent = text.filtersTitle;
   document.getElementById('sortLabel').textContent = text.sortLabel;
   document.getElementById('sortRecommended').textContent = text.sortRecommended;
@@ -1008,7 +1017,13 @@ function sharePharmacy(p) {
   const url = pharmacyUrl(p);
   const text = `${p.name} — ${I18N[lang].heroTitle}`;
   if (navigator.share) {
-    navigator.share({ title: 'RaatPharmacy', text, url }).catch(() => { /* user cancelled */ });
+    navigator.share({ title: 'RaatPharmacy', text, url }).catch(err => {
+      // A real share failure is not a cancel: fall back to copying the
+      // link, like the no-share path. Swallowing it left the visitor
+      // with no feedback and no link at all (found Nov 2026 audit).
+      if (err && err.name === 'AbortError') return; // user cancelled: stay quiet
+      copyText(url).then(() => showToast(I18N[lang].shareCopied)).catch(() => showToast(url));
+    });
   } else {
     copyText(url).then(() => showToast(I18N[lang].shareCopied)).catch(() => showToast(url));
   }
@@ -1179,6 +1194,13 @@ function init() {
   document.getElementById('emptyReset').addEventListener('click', clearFilters);
   document.getElementById('retryLoad').addEventListener('click', () => loadData());
   document.getElementById('statChipAll').addEventListener('click', () => { state.openNow = false; state.late = false; render({ announce: true }); });
+  // One-tap rescue for the 2 AM visitor: filter to open pharmacies
+  // and scroll straight to the list. One tap, no filter-hunting.
+  document.getElementById('openNowCta').addEventListener('click', () => {
+    state.openNow = true;
+    render({ announce: true });
+    document.getElementById('pharmacyList').scrollIntoView();
+  });
   document.getElementById('statChipOpen').addEventListener('click', () => { state.openNow = !state.openNow; render({ announce: true }); });
   document.getElementById('statChipLate').addEventListener('click', () => { state.late = !state.late; render({ announce: true }); });
   document.getElementById('nearestBtn').addEventListener('click', () => {

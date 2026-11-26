@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="description" content="Find an open pharmacy near you at night — hours, phone, directions in one tap.">
   <link rel="canonical" href="https://buildempirecr.github.io/raatpharmacy/">
   <meta property="og:type" content="website">
@@ -2310,7 +2310,13 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230a2e28'/%3E%3Cpath d='M17.5 13.5A6.5 6.5 0 0 1 10.5 6.5 6.5 6.5 0 1 0 17.5 13.5Z' fill='%2334e5a6'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- WHY non-blocking: a render-blocking font stylesheet in <head>
+       delays app.js (scripts wait for pending stylesheets) — on slow
+       3G the whole list stayed a skeleton for 30+ seconds. media=print
+       loads it without blocking; onload swaps it in. System fonts
+       render meanwhile, so nothing ever looks broken. -->
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -2328,7 +2334,6 @@
       </div>
       <div class="top-right">
         <div class="clock" id="clock" role="timer" aria-live="off">—</div>
-        <a href="blog/" class="lang-btn blog-link" aria-label="রাতের ফার্মেসি গাইড পড়ুন">গাইড</a>
         <button id="langToggle" class="lang-btn" type="button" aria-label="Switch language">English</button>
       </div>
     </div>
@@ -2361,6 +2366,11 @@
     <section class="hero" aria-label="Find a pharmacy tonight">
       <h2 class="hero-title"><span id="heroTitle">আজ রাতে খোলা ফার্মেসি</span></h2>
       <p class="hero-sub"><span id="heroSub">ঢাকায় এখন কোন ফার্মেসি খোলা আছে — এক নজরে দেখে নিন, তারপর কল করুন।</span></p>
+      <button id="openNowCta" class="btn btn-primary hero-cta" type="button"><span class="dot" aria-hidden="true"></span><span id="openNowCtaText">এখন খোলা ফার্মেসি দেখুন</span></button>
+      <figure class="hero-figure">
+        <img id="heroImg" src="img/hero.webp" width="1200" height="675" fetchpriority="high" alt="ঢাকার রাতে খোলা ফার্মেসির ইলাস্ট্রেশন — জ্বলজ্বলে সবুজ ক্রস আর চাঁদ">
+        <figcaption id="heroCaption">রাতের ঢাকা — ইলাস্ট্রেশন</figcaption>
+      </figure>
       <label class="search-wrap">
         <span class="visually-hidden" id="searchLabel">খুঁজুন</span>
         <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
@@ -2427,6 +2437,47 @@
         <p id="loadingState" class="empty">তালিকা লোড হচ্ছে…</p>
       </section>
     </div>
+
+    <!-- Guides live here — after the results, never in the hero.
+         The hero has one job: finding an open pharmacy right now. -->
+    <section class="guides" aria-labelledby="guidesTitle">
+      <div class="guides-head">
+        <h2 id="guidesTitle">গাইড ও টিপস</h2>
+        <p>রাতে ওষুধ লাগলে কী করবেন, কোন এলাকায় কী খোলা থাকে — যাচাই করা তথ্যে লেখা গাইড।</p>
+      </div>
+      <ul class="guides-list">
+        <li class="guide-card">
+          <h3><a href="blog/rate-khola-pharmacy-dhaka.html">রাতে খোলা ফার্মেসি ঢাকা — কীভাবে খুঁজবেন</a></h3>
+          <p>২৪ ঘণ্টা খোলা ফার্মেসির তালিকা, রাত ১২টার পরেও খোলা দোকান আর যাওয়ার আগে যাচাই করার নিয়ম — সব এক পাতায়।</p>
+          <p class="guide-meta"><span>পড়তে প্রায় ৯ মিনিট</span><a href="blog/rate-khola-pharmacy-dhaka.html">পড়ুন →</a></p>
+        </li>
+        <li class="guide-card">
+          <h3><a href="blog/gulshan-night-pharmacy.html">গুলশান ও বনানীতে রাতের ফার্মেসি</a></h3>
+          <p>ভোর ৩টা পর্যন্ত খোলা ইসলামিয়া, ২৪ ঘণ্টার ইউনাইটেড হাসপাতাল — গুলশান-বনানীর রাতের ফার্মেসির তালিকা।</p>
+          <p class="guide-meta"><span>পড়তে প্রায় ৬ মিনিট</span><a href="blog/gulshan-night-pharmacy.html">পড়ুন →</a></p>
+        </li>
+        <li class="guide-card">
+          <h3><a href="blog/dhanmondi-night-pharmacy.html">ধানমন্ডি ও মোহাম্মদপুরে রাতের ফার্মেসি</a></h3>
+          <p>দুটো ২৪ ঘণ্টার ফার্মেসি, স্কয়ার-গ্রিন লাইফের হাসপাতাল ফার্মেসি — ধানমন্ডি-মোহাম্মদপুরের রাতের তালিকা।</p>
+          <p class="guide-meta"><span>পড়তে প্রায় ৬ মিনিট</span><a href="blog/dhanmondi-night-pharmacy.html">পড়ুন →</a></p>
+        </li>
+        <li class="guide-card">
+          <h3><a href="blog/mirpur-night-pharmacy.html">মিরপুর ও উত্তরায় রাতের ফার্মেসি</a></h3>
+          <p>লাজ ফার্মার মিরপুর-উত্তরা শাখা, শুক্রবার বন্ধ থাকা ফার্মেসির সতর্কতাসহ পুরো তালিকা।</p>
+          <p class="guide-meta"><span>পড়তে প্রায় ৭ মিনিট</span><a href="blog/mirpur-night-pharmacy.html">পড়ুন →</a></p>
+        </li>
+        <li class="guide-card">
+          <h3><a href="blog/joruri-oshudh-rate.html">রাতে জরুরি ওষুধ লাগলে কী করবেন</a></h3>
+          <p>প্রেসক্রিপশন থেকে ২৪ ঘণ্টার ফার্মেসি — মাঝরাতে ওষুধ লাগলে ধাপে ধাপে কী করবেন।</p>
+          <p class="guide-meta"><span>পড়তে প্রায় ৫ মিনিট</span><a href="blog/joruri-oshudh-rate.html">পড়ুন →</a></p>
+        </li>
+        <li class="guide-card">
+          <h3><a href="blog/pharmacy-khola-ache-kina.html">ফার্মেসি খোলা আছে কিনা বোঝার উপায়</a></h3>
+          <p>সময়, ফোন, হোয়াটসঅ্যাপ — ফার্মেসি খোলা আছে কিনা বোঝার ৫টি নির্ভরযোগ্য উপায়।</p>
+          <p class="guide-meta"><span>পড়তে প্রায় ৪ মিনিট</span><a href="blog/pharmacy-khola-ache-kina.html">পড়ুন →</a></p>
+        </li>
+      </ul>
+    </section>
   </main>
 
   <footer>

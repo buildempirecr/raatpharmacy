@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>গাইড — রাতে খোলা ফার্মেসি ঢাকা | RaatPharmacy</title>
   <meta name="description" content="ঢাকায় রাতে খোলা ফার্মেসি খোঁজার গাইড — এলাকা অনুযায়ী তালিকা, জরুরি ওষুধের চেকলিস্ট, খোলা আছে কিনা বোঝার উপায়।">
   <link rel="canonical" href="https://buildempirecr.github.io/raatpharmacy/blog/">
@@ -23,7 +23,10 @@
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Non-blocking fonts: a render-blocking font stylesheet delays
+       first paint on slow networks (see finder index.html). -->
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="blog.css">
   <script type="application/ld+json">
@@ -74,31 +77,37 @@
     <p class="blog-lede">ঢাকায় রাতে ওষুধ লাগলে কী করবেন, কোন ফার্মেসি কখন খোলা থাকে, যাওয়ার আগে কী যাচাই করবেন — সব গাইড এক জায়গায়। প্রতিটা তালিকা ৯৪টি যাচাই করা ফার্মেসির তথ্য থেকে বানানো।</p>
     <ul class="blog-index-list">
       <li class="blog-card">
+        <figure class="blog-card-thumb"><img src="../img/blog-night-pharmacy-dhaka.webp" width="960" height="540" loading="lazy" alt=""></figure>
         <h2><a href="rate-khola-pharmacy-dhaka.html">রাতে খোলা ফার্মেসি ঢাকা — কীভাবে খুঁজবেন</a></h2>
         <p>২৪ ঘণ্টা খোলা ফার্মেসির তালিকা, রাত ১২টার পরেও খোলা দোকান আর যাওয়ার আগে যাচাই করার নিয়ম — সব এক পাতায়।</p>
         <p class="blog-card-meta">প্রকাশ: ২৬ নভেম্বর ২০২৬ · পড়তে প্রায় ৯ মিনিট</p>
       </li>
       <li class="blog-card">
+        <figure class="blog-card-thumb"><img src="../img/blog-gulshan.webp" width="960" height="540" loading="lazy" alt=""></figure>
         <h2><a href="gulshan-night-pharmacy.html">গুলশান ও বনানীতে রাতের ফার্মেসি</a></h2>
         <p>ভোর ৩টা পর্যন্ত খোলা ইসলামিয়া, ২৪ ঘণ্টার ইউনাইটেড হাসপাতাল — গুলশান-বনানীর রাতের ফার্মেসির তালিকা।</p>
         <p class="blog-card-meta">প্রকাশ: ২৬ নভেম্বর ২০২৬ · পড়তে প্রায় ৬ মিনিট</p>
       </li>
       <li class="blog-card">
+        <figure class="blog-card-thumb"><img src="../img/blog-dhanmondi.webp" width="960" height="540" loading="lazy" alt=""></figure>
         <h2><a href="dhanmondi-night-pharmacy.html">ধানমন্ডি ও মোহাম্মদপুরে রাতের ফার্মেসি</a></h2>
         <p>দুটো ২৪ ঘণ্টার ফার্মেসি, স্কয়ার-গ্রিন লাইফের হাসপাতাল ফার্মেসি — ধানমন্ডি-মোহাম্মদপুরের রাতের তালিকা।</p>
         <p class="blog-card-meta">প্রকাশ: ২৬ নভেম্বর ২০২৬ · পড়তে প্রায় ৬ মিনিট</p>
       </li>
       <li class="blog-card">
+        <figure class="blog-card-thumb"><img src="../img/blog-mirpur.webp" width="960" height="540" loading="lazy" alt=""></figure>
         <h2><a href="mirpur-night-pharmacy.html">মিরপুর ও উত্তরায় রাতের ফার্মেসি</a></h2>
         <p>লাজ ফার্মার মিরপুর-উত্তরা শাখা, শুক্রবার বন্ধ থাকা ফার্মেসির সতর্কতাসহ পুরো তালিকা।</p>
         <p class="blog-card-meta">প্রকাশ: ২৬ নভেম্বর ২০২৬ · পড়তে প্রায় ৭ মিনিট</p>
       </li>
       <li class="blog-card">
+        <figure class="blog-card-thumb"><img src="../img/blog-emergency.webp" width="960" height="540" loading="lazy" alt=""></figure>
         <h2><a href="joruri-oshudh-rate.html">রাতে জরুরি ওষুধ লাগলে কী করবেন</a></h2>
         <p>প্রেসক্রিপশন থেকে ২৪ ঘণ্টার ফার্মেসি — মাঝরাতে ওষুধ লাগলে ধাপে ধাপে কী করবেন।</p>
         <p class="blog-card-meta">প্রকাশ: ২৬ নভেম্বর ২০২৬ · পড়তে প্রায় ৫ মিনিট</p>
       </li>
       <li class="blog-card">
+        <figure class="blog-card-thumb"><img src="../img/blog-open-or-closed.webp" width="960" height="540" loading="lazy" alt=""></figure>
         <h2><a href="pharmacy-khola-ache-kina.html">ফার্মেসি খোলা আছে কিনা বোঝার উপায়</a></h2>
         <p>সময়, ফোন, হোয়াটসঅ্যাপ — ফার্মেসি খোলা আছে কিনা বোঝার ৫টি নির্ভরযোগ্য উপায়।</p>
         <p class="blog-card-meta">প্রকাশ: ২৬ নভেম্বর ২০২৬ · পড়তে প্রায় ৪ মিনিট</p>

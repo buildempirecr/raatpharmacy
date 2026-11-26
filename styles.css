@@ -54,12 +54,50 @@
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+/* ---------- Premium night background (restrained, human, not AI-generic) ----------
+   No purple-blue gradients, no glass-everywhere, no decoration for its
+   own sake. Dark: one deep-emerald gradient (never flat black), one
+   soft moon glow top-right, and a few faint stars that fade out below
+   the hero. Everything is pure CSS/SVG — no background photo, no
+   extra download, no motion (static: nothing animates here, so
+   prefers-reduced-motion needs no exception). Light mode gets the same
+   idea in warm mint: soft gradient + mint glow, no stars. */
 body {
   margin: 0;
   font-family: "Hind Siliguri", "Sora", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Bengali", sans-serif;
-  background: var(--bg);
+  background:
+    radial-gradient(680px 420px at 88% -8%, rgba(52, 229, 166, .09), transparent 62%),
+    radial-gradient(520px 340px at 6% 0%, rgba(52, 229, 166, .05), transparent 60%),
+    linear-gradient(180deg, #0a2a24 0%, #071f1b 26%, #051713 100%);
+  background-attachment: scroll;
   color: var(--text);
   line-height: 1.55;
+}
+/* Faint stars, top of the page only, fading out below the hero. A
+   fixed pseudo-element would paint stars over the cards while
+   scrolling; this one is absolute, masked, and pointer-transparent. */
+body::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0; height: 560px;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='260'%3E%3Cg fill='%23dff5e9'%3E%3Ccircle cx='30' cy='40' r='1.1' opacity='.5'/%3E%3Ccircle cx='120' cy='90' r='.8' opacity='.35'/%3E%3Ccircle cx='210' cy='30' r='1.3' opacity='.45'/%3E%3Ccircle cx='290' cy='120' r='.9' opacity='.4'/%3E%3Ccircle cx='70' cy='180' r='1' opacity='.3'/%3E%3Ccircle cx='180' cy='200' r='.8' opacity='.35'/%3E%3Ccircle cx='330' cy='210' r='1.1' opacity='.3'/%3E%3Ccircle cx='250' cy='70' r='.7' opacity='.3'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 360px 260px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 88%);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 88%);
+  opacity: .8;
+}
+/* Light mode background — MUST come after the base body rule above:
+   same specificity, so the later rule wins. (An earlier version put
+   this inside the :root media block at the top of the file, where the
+   dark body gradient below it overrode it — light-mode visitors got a
+   dark background with dark text and an invisible hero title.) */
+@media (prefers-color-scheme: light) {
+  body {
+    background:
+      radial-gradient(680px 420px at 88% -8%, rgba(10, 122, 82, .10), transparent 62%),
+      linear-gradient(180deg, #f5f9f4 0%, #e9f1ea 34%, #dfece2 100%);
+  }
+  body::before { display: none; } /* stars belong to the night */
 }
 /* Bangla script needs taller line-height than Latin (matra + descenders). */
 :lang(bn) { line-height: 1.75; }
@@ -87,18 +125,29 @@ h1, h2, h3 { line-height: 1.25; }
 }
 .hidden { display: none !important; }
 
-/* ---------- Header: stacks on phones, never overlaps ---------- */
+/* ---------- Header: stacks on phones, never overlaps ----------
+   The ONE frosted surface on the site (deliberate restraint: cards
+   stay solid — glass everywhere reads as generic AI output, and 94
+   blurred cards would jank scrolling on cheap phones). The header is
+   translucent + blurred so the night gradient shows through faintly.
+   Sticky only from 640px up: on phones the stacked header is tall
+   and would eat the screen. */
 .topbar {
   background:
-    radial-gradient(720px 260px at 18% -40%, rgba(52, 229, 166, .16), transparent 65%),
-    linear-gradient(160deg, #0a2e28, #071f1b 70%);
+    radial-gradient(720px 260px at 18% -40%, rgba(52, 229, 166, .14), transparent 65%),
+    linear-gradient(160deg, rgba(10, 46, 40, .88), rgba(7, 31, 27, .9));
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
   border-bottom: 1px solid var(--border);
+}
+@media (min-width: 640px) {
+  .topbar { position: sticky; top: 0; z-index: 30; }
 }
 @media (prefers-color-scheme: light) {
   .topbar {
     background:
-      radial-gradient(720px 260px at 18% -40%, rgba(10, 122, 82, .14), transparent 65%),
-      linear-gradient(160deg, #0d3d31, #0a2e26 70%);
+      radial-gradient(720px 260px at 18% -40%, rgba(10, 122, 82, .12), transparent 65%),
+      linear-gradient(160deg, rgba(13, 61, 49, .9), rgba(10, 46, 38, .92));
     color: #eef7f2;
   }
   .topbar .brand p { color: #bcd8cb; }
@@ -159,6 +208,18 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
   letter-spacing: -0.03em; line-height: 1.15; text-wrap: balance;
 }
 .hero-sub { margin: 10px 0 0; color: var(--muted); font-size: 16.5px; max-width: 62ch; }
+/* One-tap action for the 2 AM visitor: the single biggest button on
+   the page, directly under the pitch. One tap filters to open
+   pharmacies and scrolls to them — no hunting through filters. */
+.hero-cta { margin-top: 18px; font-size: 16px; padding: 13px 24px; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+.hero-cta .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; animation: pulse 2.2s ease-out infinite; }
+/* Hero illustration: an editorial frame, not a stock photo. The
+   caption says plainly that it is an illustration — honesty is part
+   of the craft. Fixed aspect ratio + width/height attributes on the
+   <img> mean zero layout shift while it loads. */
+.hero-figure { margin: 20px 0 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-1); }
+.hero-figure img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.hero-figure figcaption { font-size: 13px; color: var(--muted); background: var(--surface); padding: 8px 14px; border-top: 1px solid var(--border); }
 .search-wrap {
   display: flex; align-items: center; gap: 10px;
   background: var(--surface); border: 1px solid var(--border-strong);
@@ -273,7 +334,44 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
 .about .sources a, footer .footer-links a { color: var(--accent); text-decoration: none; font-weight: 700; }
 .about .sources a:hover, footer .footer-links a:hover { text-decoration: underline; }
 
-/* ---------- Results / cards ---------- */
+/* ---------- Guides section (after the results, never in the hero) ----------
+   The hero stays clean and focused on one job: finding an open
+   pharmacy right now. The guides live here, as proper article cards
+   with title, teaser and reading time — easy to find, never in the
+   way. Same solid surface + fine border as the pharmacy cards, so
+   the whole page reads as one careful system. */
+.guides { margin-top: 36px; }
+.guides-head h2 {
+  margin: 0; font-family: "Sora", "Hind Siliguri", sans-serif;
+  font-size: clamp(22px, 4vw, 28px); font-weight: 800; letter-spacing: -0.02em;
+}
+.guides-head p { margin: 8px 0 0; color: var(--muted); font-size: 15.5px; max-width: 62ch; }
+.guides-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.guide-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-1);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.guide-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+.guide-card h3 { margin: 0 0 6px; font-family: "Sora", "Hind Siliguri", sans-serif; font-size: 18px; font-weight: 700; line-height: 1.3; }
+.guide-card h3 a { color: var(--text); text-decoration: none; }
+.guide-card h3 a:hover { color: var(--accent); }
+.guide-card p { margin: 0 0 12px; color: var(--muted); font-size: 14.5px; }
+.guide-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; color: var(--muted-2); }
+.guide-meta a { color: var(--accent); font-weight: 700; text-decoration: none; white-space: nowrap; }
+.guide-meta a:hover { text-decoration: underline; }
+@media (min-width: 768px) {
+  .guides-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .guides-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---------- Results / cards ----------
+   Cards stay SOLID surfaces on purpose: one frosted header is a
+   considered detail; 94 blurred cards would look like generic AI
+   glassmorphism and jank scrolling on cheap phones. Fine 1px border
+   + layered shadow is the craft here. */
 .result-count { color: var(--muted); font-size: 14px; margin: 2px 2px 12px; }
 .pharmacy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 .card {
@@ -372,11 +470,15 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 8px 
 
 /* Correction sheet */
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); z-index: 40; }
+/* Correction sheet: cap its height and let it scroll internally, so
+   on a short viewport (landscape phone, keyboard open) the input and
+   the submit button can always be reached. */
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
   background: var(--surface); border-radius: 20px 20px 0 0;
   border: 1px solid var(--border); border-bottom: 0; padding: 20px 18px 24px;
   max-width: 640px; margin: 0 auto; box-shadow: var(--shadow-2);
+  max-height: 85dvh; overflow-y: auto; overscroll-behavior: contain;
 }
 .sheet h2 { margin: 0 0 4px; font-family: "Sora", "Hind Siliguri", sans-serif; font-size: 19px; }
 .sheet-sub { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
@@ -428,6 +530,27 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 8px 
    Disabled under prefers-reduced-motion (see the block below). */
 @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .pharmacy-list.list-anim .card { animation: cardIn 120ms cubic-bezier(.2,.8,.2,1) both; }
+/* ---------- Print: ink-friendly, no dark flood ----------
+   A visitor printing the list gets black text on white, no dark
+   backgrounds, and none of the interactive chrome (header buttons,
+   filters, action buttons, sheet, toast). Cards become plain
+   bordered blocks that do not split across pages. */
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+  body::before { display: none !important; }
+  .topbar { position: static !important; background: #fff !important; border-bottom: 2px solid #111; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .topbar .brand p, .topbar .clock, .top-right { color: #333 !important; }
+  .top-right .lang-btn, .hero-figure, .hero-cta, .search-wrap, .stat-chips,
+  .sidebar, .sheet, .sheet-backdrop, .toast, .skip-link, .actions,
+  .link-btn, .guides, footer .footer-links { display: none !important; }
+  .card, .guide-card { background: #fff !important; color: #111 !important; border: 1px solid #999 !important; box-shadow: none !important; break-inside: avoid; }
+  .card .area, .address, .meta-line, .phone-line { color: #333 !important; }
+  .badge { border: 1px solid #666 !important; background: #fff !important; color: #111 !important; }
+  .hero-title, .card h3 { color: #111 !important; }
+  .hero-sub, .stock-note { color: #333 !important; }
+  main { padding: 0; }
+  a { color: #111 !important; text-decoration: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

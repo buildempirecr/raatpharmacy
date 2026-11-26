@@ -1,10 +1,10 @@
 // RaatPharmacy service worker — app shell + data, cache-first.
 // The site works fully without it; registration failure is silent.
 // WHY the version in the cache name: a service worker only picks up
-// changed files when the cache name changes, so bump v4 -> v5 (and so
+// changed files when the cache name changes, so bump v5 -> v6 (and so
 // on) on every release that touches a cached file, or visitors keep
 // seeing the old version.
-const CACHE = 'raatpharmacy-v5';
+const CACHE = 'raatpharmacy-v6';
 const ASSETS = [
   './',
   'index.html',
@@ -16,6 +16,7 @@ const ASSETS = [
   'icon.svg',
   'icon-192.png',
   'icon-512.png',
+  'img/hero.webp',
   'blog/',
   'blog/index.html',
   'blog/blog.css',

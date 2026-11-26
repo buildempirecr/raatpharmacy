@@ -135,7 +135,7 @@ def page_head(title, description, canonical, is_article=False, extra_head=""):
 <html lang="bn">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>{escape(title)}</title>
   <meta name="description" content="{escape(description)}">
   <link rel="canonical" href="{canonical}">
@@ -156,7 +156,10 @@ def page_head(title, description, canonical, is_article=False, extra_head=""):
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Non-blocking fonts: a render-blocking font stylesheet delays
+       first paint on slow networks (see finder index.html). -->
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="blog.css">
 {extra_head}</head>
@@ -292,6 +295,10 @@ def render_article(article, pharmacies):
     <article class="blog-article">
       <h1>{escape(article["h1"])}</h1>
       <p class="blog-meta">প্রকাশ: {PUBLISHED_BN} · পড়তে প্রায় {bangla_digits(minutes)} মিনিট · তথ্য যাচাই: {PUBLISHED_BN}</p>
+      <figure class="article-hero">
+        <img src="../img/{article["image"]}" width="960" height="540" alt="{escape(article["image_alt"])}">
+        <figcaption>ইলাস্ট্রেশন</figcaption>
+      </figure>
       <p class="blog-lede">{escape(article["lede"])}</p>
 {body}
       <aside class="blog-cta">
@@ -346,6 +353,7 @@ def render_index(articles, pharmacies):
         minutes = reading_minutes(article["body"](pharmacies))
         cards.append(
             "      <li class=\"blog-card\">\n"
+            f"        <figure class=\"blog-card-thumb\"><img src=\"../img/{article['image']}\" width=\"960\" height=\"540\" loading=\"lazy\" alt=\"\"></figure>\n"
             f"        <h2><a href=\"{article['slug']}.html\">{escape(article['h1'])}</a></h2>\n"
             f"        <p>{escape(article['teaser'])}</p>\n"
             f"        <p class=\"blog-card-meta\">প্রকাশ: {PUBLISHED_BN} · পড়তে প্রায় "
@@ -434,6 +442,8 @@ ARTICLES.append({
     "body": _pillar_body,
     "cta_href": "../?open=1",
     "cta_text": "এখন খোলা ফার্মেসি দেখুন",
+    "image": "blog-night-pharmacy-dhaka.webp",
+    "image_alt": "ঢাকার রাতের মানচিত্রে জ্বলজ্বলে ফার্মেসি চিহ্ন — ইলাস্ট্রেশন",
     "related": [],
 })
 
@@ -470,6 +480,8 @@ ARTICLES.append({
     "body": _gulshan_body,
     "cta_href": "../?area=Gulshan&open=1",
     "cta_text": "গুলশানে এখন খোলা ফার্মেসি দেখুন",
+    "image": "blog-gulshan.webp",
+    "image_alt": "রাতে গুলশানের উঁচু ভবনের সারি আর ফার্মেসির সবুজ ক্রস — ইলাস্ট্রেশন",
     "related": [],
 })
 
@@ -506,6 +518,8 @@ ARTICLES.append({
     "body": _dhanmondi_body,
     "cta_href": "../?area=Dhanmondi&open=1",
     "cta_text": "ধানমন্ডিতে এখন খোলা ফার্মেসি দেখুন",
+    "image": "blog-dhanmondi.webp",
+    "image_alt": "রাতে ধানমন্ডির গাছপালা ঘেরা রাস্তায় ফার্মেসির আলো — ইলাস্ট্রেশন",
     "related": [],
 })
 
@@ -541,6 +555,8 @@ ARTICLES.append({
     "body": _mirpur_body,
     "cta_href": "../?area=Mirpur&open=1",
     "cta_text": "মিরপুরে এখন খোলা ফার্মেসি দেখুন",
+    "image": "blog-mirpur.webp",
+    "image_alt": "রাতে মিরপুরের আবাসিক রাস্তায় ফার্মেসির দোকান — ইলাস্ট্রেশন",
     "related": [],
 })
 
@@ -579,6 +595,8 @@ ARTICLES.append({
     "body": _emergency_body,
     "cta_href": "../?open=1&late=1",
     "cta_text": "এখন খোলা ফার্মেসি দেখুন",
+    "image": "blog-emergency.webp",
+    "image_alt": "জরুরি ওষুধের বাক্স আর রাতের ঘড়ি — ইলাস্ট্রেশন",
     "related": [],
 })
 
@@ -618,6 +636,8 @@ ARTICLES.append({
     "body": _is_open_body,
     "cta_href": "../?open=1",
     "cta_text": "এখন খোলা ফার্মেসি দেখুন",
+    "image": "blog-open-or-closed.webp",
+    "image_alt": "ফোনে খোলা ফার্মেসির চিহ্ন আর ঘড়ি — ইলাস্ট্রেশন",
     "related": [],
 })
 
